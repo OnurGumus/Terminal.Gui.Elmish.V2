@@ -95,27 +95,28 @@ let clock dispatch =
 let y0 = 4
 
 let counterPage model dispatch =
-    [ View.label [
+    [ View.label [ prop.id "lblCount"; prop.position.x.at 2; prop.position.y.at (y0 + 1); label.text "Counter value:" ]
+
+      View.label [
           prop.id "count"
-          prop.position.x.center
+          prop.position.x.at 18
           prop.position.y.at (y0 + 1)
-          prop.textAlignment.centered
           prop.color (col "BrightGreen", col "Black")
-          label.text $"  Count = {model.Count}  "
+          label.text $" {model.Count} "
       ]
 
       View.progressBar [
           prop.id "bar"
-          prop.position.x.center
+          prop.position.x.at 2
           prop.position.y.at (y0 + 3)
-          prop.width.percent 50
+          prop.width.sized 40
           progressBar.fraction (float (((model.Count % 21) + 21) % 21) / 20.0)
           progressBar.style.blocks
       ]
 
-      View.button [ prop.id "inc"; prop.position.x.center; prop.position.y.at (y0 + 5); button.text "Up"; button.onClick (fun () -> dispatch Increment) ]
-      View.button [ prop.id "dec"; prop.position.x.center; prop.position.y.at (y0 + 7); button.text "Down"; button.onClick (fun () -> dispatch Decrement) ]
-      View.button [ prop.id "rst"; prop.position.x.center; prop.position.y.at (y0 + 9); button.text "Reset"; button.onClick (fun () -> dispatch Reset) ] ]
+      View.button [ prop.id "inc"; prop.position.x.at 2; prop.position.y.at (y0 + 5); button.text "Up"; button.onClick (fun () -> dispatch Increment) ]
+      View.button [ prop.id "dec"; prop.position.x.at 12; prop.position.y.at (y0 + 5); button.text "Down"; button.onClick (fun () -> dispatch Decrement) ]
+      View.button [ prop.id "rst"; prop.position.x.at 24; prop.position.y.at (y0 + 5); button.text "Reset"; button.onClick (fun () -> dispatch Reset) ] ]
 
 let formPage model dispatch =
     [ View.label [ prop.id "lblName"; prop.position.x.at 2; prop.position.y.at (y0 + 1); label.text "Name:" ]
