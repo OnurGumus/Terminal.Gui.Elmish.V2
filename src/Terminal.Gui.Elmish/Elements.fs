@@ -1,6 +1,9 @@
 namespace Terminal.Gui.Elmish.Elements
 
 open System
+open System.Collections.Generic
+open System.Collections.ObjectModel
+open System.Data
 open Terminal.Gui.App
 open Terminal.Gui.ViewBase
 open Terminal.Gui.Views
@@ -88,6 +91,7 @@ module ViewElement =
         props |> Interop.getValue<Alignment> "textAlignment" |> Option.iter (fun v -> view.TextAlignment <- v)
         props |> Interop.getValue<TextDirection> "textDirection" |> Option.iter (fun v -> view.TextDirection <- v)
         props |> Interop.getValue<string> "id" |> Option.iter (fun v -> view.Id <- v)
+        props |> Interop.getValue<string> "title" |> Option.iter (fun v -> view.Title <- v)
         props |> Interop.getValue<bool> "enabled" |> Option.iter (fun v -> view.Enabled <- v)
         props |> Interop.getValue<bool> "visible" |> Option.iter (fun v -> view.Visible <- v)
         props |> Interop.getValue<bool> "canFocus" |> Option.iter (fun v -> view.CanFocus <- v)
@@ -447,4 +451,627 @@ type TextViewElement(props: IProperty list) =
         removeProps element removedProps
         ViewElement.setProps prevElement changedProps
         setProps element changedProps
+        this.element <- prevElement
+
+
+type ProgressBarElement(props: IProperty list) =
+    inherit TerminalElement(props)
+
+    let setProps (element: ProgressBar) props =
+        props |> Interop.getValue<string> "text" |> Option.iter (fun v -> element.Text <- v)
+        props |> Interop.getValue<float> "fraction" |> Option.iter (fun v -> element.Fraction <- float32 v)
+        props |> Interop.getValue<ProgressBarStyle> "progressBarStyle" |> Option.iter (fun v -> element.ProgressBarStyle <- v)
+        props |> Interop.getValue<ProgressBarFormat> "progressBarFormat" |> Option.iter (fun v -> element.ProgressBarFormat <- v)
+
+    override _.name = "ProgressBar"
+
+    override this.create parent =
+        this.parent <- parent
+        let el = new ProgressBar()
+        parent |> Option.iter (fun p -> p.Add el |> ignore)
+        ViewElement.setProps el props
+        setProps el props
+        props |> Interop.getValue<View -> unit> "ref" |> Option.iter (fun v -> v el)
+        this.element <- el
+
+    override this.canUpdate prevElement oldProps =
+        let (changedProps, removedProps) = Interop.filterProps oldProps props
+        ViewElement.canUpdate prevElement changedProps removedProps
+
+    override this.update prevElement oldProps =
+        let element = prevElement :?> ProgressBar
+        let (changedProps, removedProps) = Interop.filterProps oldProps props
+        ViewElement.removeProps prevElement removedProps
+        ViewElement.setProps prevElement changedProps
+        setProps element changedProps
+        this.element <- prevElement
+
+
+type LineElement(props: IProperty list) =
+    inherit TerminalElement(props)
+
+    let setProps (element: Line) props =
+        props |> Interop.getValue<Orientation> "orientation" |> Option.iter (fun v -> element.Orientation <- v)
+
+    override _.name = "Line"
+
+    override this.create parent =
+        this.parent <- parent
+        let el = new Line()
+        parent |> Option.iter (fun p -> p.Add el |> ignore)
+        ViewElement.setProps el props
+        setProps el props
+        props |> Interop.getValue<View -> unit> "ref" |> Option.iter (fun v -> v el)
+        this.element <- el
+
+    override this.canUpdate prevElement oldProps =
+        let (changedProps, removedProps) = Interop.filterProps oldProps props
+        ViewElement.canUpdate prevElement changedProps removedProps
+
+    override this.update prevElement oldProps =
+        let element = prevElement :?> Line
+        let (changedProps, removedProps) = Interop.filterProps oldProps props
+        ViewElement.removeProps prevElement removedProps
+        ViewElement.setProps prevElement changedProps
+        setProps element changedProps
+        this.element <- prevElement
+
+
+type ListViewElement(props: IProperty list) =
+    inherit TerminalElement(props)
+
+    let setProps (element: ListView) props =
+        props
+        |> Interop.getValue<string list> "source"
+        |> Option.iter (fun items -> element.SetSource<string>(ObservableCollection<string>(items)))
+
+        props |> Interop.getValue<int> "selectedItem" |> Option.iter (fun v -> element.SelectedItem <- Nullable v)
+
+        props
+        |> Interop.getValue<int -> unit> "onSelectedItemChanged"
+        |> Option.iter (fun f ->
+            Interop.bridgeEvent element "ValueChanged"
+                (fun v b -> (v :?> ListView).ValueChanged.Add (fun e -> b.invoke (box e)))
+                (fun o ->
+                    let e = o :?> ValueChangedEventArgs<Nullable<int>>
+                    if e.NewValue.HasValue then f e.NewValue.Value))
+
+    let removeProps (element: ListView) props =
+        props |> Interop.getValue<int -> unit> "onSelectedItemChanged" |> Option.iter (fun _ -> Interop.clearEvent element "ValueChanged")
+
+    override _.name = "ListView"
+
+    override this.create parent =
+        this.parent <- parent
+        let el = new ListView()
+        parent |> Option.iter (fun p -> p.Add el |> ignore)
+        ViewElement.setProps el props
+        setProps el props
+        props |> Interop.getValue<View -> unit> "ref" |> Option.iter (fun v -> v el)
+        this.element <- el
+
+    override this.canUpdate prevElement oldProps =
+        let (changedProps, removedProps) = Interop.filterProps oldProps props
+        ViewElement.canUpdate prevElement changedProps removedProps
+
+    override this.update prevElement oldProps =
+        let element = prevElement :?> ListView
+        let (changedProps, removedProps) = Interop.filterProps oldProps props
+        ViewElement.removeProps prevElement removedProps
+        removeProps element removedProps
+        ViewElement.setProps prevElement changedProps
+        setProps element changedProps
+        this.element <- prevElement
+
+
+/// v1 RadioGroup -> v2 OptionSelector.
+type OptionSelectorElement(props: IProperty list) =
+    inherit TerminalElement(props)
+
+    let setProps (element: OptionSelector) props =
+        props
+        |> Interop.getValue<string list> "radioLabels"
+        |> Option.iter (fun items -> element.Labels <- (items |> List.toArray :> IReadOnlyList<string>))
+
+        props |> Interop.getValue<int> "selectedItem" |> Option.iter (fun v -> element.Value <- Nullable v)
+
+        props
+        |> Interop.getValue<int -> unit> "onSelectedItemChanged"
+        |> Option.iter (fun f ->
+            Interop.bridgeEvent element "ValueChanged"
+                (fun v b -> (v :?> OptionSelector).ValueChanged.Add (fun e -> b.invoke (box e)))
+                (fun o ->
+                    let e = o :?> ValueChangedEventArgs<Nullable<int>>
+                    if e.NewValue.HasValue then f e.NewValue.Value))
+
+    let removeProps (element: OptionSelector) props =
+        props |> Interop.getValue<int -> unit> "onSelectedItemChanged" |> Option.iter (fun _ -> Interop.clearEvent element "ValueChanged")
+
+    override _.name = "OptionSelector"
+
+    override this.create parent =
+        this.parent <- parent
+        let el = new OptionSelector()
+        parent |> Option.iter (fun p -> p.Add el |> ignore)
+        ViewElement.setProps el props
+        setProps el props
+        props |> Interop.getValue<View -> unit> "ref" |> Option.iter (fun v -> v el)
+        this.element <- el
+
+    override this.canUpdate prevElement oldProps =
+        let (changedProps, removedProps) = Interop.filterProps oldProps props
+        ViewElement.canUpdate prevElement changedProps removedProps
+
+    override this.update prevElement oldProps =
+        let element = prevElement :?> OptionSelector
+        let (changedProps, removedProps) = Interop.filterProps oldProps props
+        ViewElement.removeProps prevElement removedProps
+        removeProps element removedProps
+        ViewElement.setProps prevElement changedProps
+        setProps element changedProps
+        this.element <- prevElement
+
+
+/// v1 ComboBox -> v2 DropDownList.
+type DropDownListElement(props: IProperty list) =
+    inherit TerminalElement(props)
+
+    let setProps (element: DropDownList) props =
+        props
+        |> Interop.getValue<string list> "source"
+        |> Option.iter (fun items -> element.Source <- ListWrapper<string>(ObservableCollection<string>(items)))
+
+        props |> Interop.getValue<string> "text" |> Option.iter (fun v -> if Checker.textChanged element v then element.Text <- v)
+        props |> Interop.getValue<bool> "readonly" |> Option.iter (fun v -> element.ReadOnly <- v)
+
+        props
+        |> Interop.getValue<string -> unit> "onTextChanged"
+        |> Option.iter (fun f ->
+            Interop.bridgeEvent element "ValueChanged"
+                (fun v b -> (v :?> DropDownList).ValueChanged.Add (fun e -> b.invoke (box e)))
+                (fun o ->
+                    let e = o :?> ValueChangedEventArgs<string>
+                    f (if isNull e.NewValue then "" else e.NewValue)))
+
+    let removeProps (element: DropDownList) props =
+        props |> Interop.getValue<string -> unit> "onTextChanged" |> Option.iter (fun _ -> Interop.clearEvent element "ValueChanged")
+
+    override _.name = "DropDownList"
+
+    override this.create parent =
+        this.parent <- parent
+        let el = new DropDownList()
+        parent |> Option.iter (fun p -> p.Add el |> ignore)
+        ViewElement.setProps el props
+        setProps el props
+        props |> Interop.getValue<View -> unit> "ref" |> Option.iter (fun v -> v el)
+        this.element <- el
+
+    override this.canUpdate prevElement oldProps =
+        let (changedProps, removedProps) = Interop.filterProps oldProps props
+        ViewElement.canUpdate prevElement changedProps removedProps
+
+    override this.update prevElement oldProps =
+        let element = prevElement :?> DropDownList
+        let (changedProps, removedProps) = Interop.filterProps oldProps props
+        ViewElement.removeProps prevElement removedProps
+        removeProps element removedProps
+        ViewElement.setProps prevElement changedProps
+        setProps element changedProps
+        this.element <- prevElement
+
+
+/// v1 DateField -> v2 DatePicker.
+type DatePickerElement(props: IProperty list) =
+    inherit TerminalElement(props)
+
+    let setProps (element: DatePicker) props =
+        props |> Interop.getValue<DateTime> "date" |> Option.iter (fun v -> element.Value <- v)
+
+        props
+        |> Interop.getValue<DateTime -> unit> "onDateChanged"
+        |> Option.iter (fun f ->
+            Interop.bridgeEvent element "ValueChanged"
+                (fun v b -> (v :?> DatePicker).ValueChanged.Add (fun e -> b.invoke (box e)))
+                (fun o -> f ((o :?> ValueChangedEventArgs<DateTime>).NewValue)))
+
+    let removeProps (element: DatePicker) props =
+        props |> Interop.getValue<DateTime -> unit> "onDateChanged" |> Option.iter (fun _ -> Interop.clearEvent element "ValueChanged")
+
+    override _.name = "DatePicker"
+
+    override this.create parent =
+        this.parent <- parent
+        let el = new DatePicker()
+        parent |> Option.iter (fun p -> p.Add el |> ignore)
+        ViewElement.setProps el props
+        setProps el props
+        props |> Interop.getValue<View -> unit> "ref" |> Option.iter (fun v -> v el)
+        this.element <- el
+
+    override this.canUpdate prevElement oldProps =
+        let (changedProps, removedProps) = Interop.filterProps oldProps props
+        ViewElement.canUpdate prevElement changedProps removedProps
+
+    override this.update prevElement oldProps =
+        let element = prevElement :?> DatePicker
+        let (changedProps, removedProps) = Interop.filterProps oldProps props
+        ViewElement.removeProps prevElement removedProps
+        removeProps element removedProps
+        ViewElement.setProps prevElement changedProps
+        setProps element changedProps
+        this.element <- prevElement
+
+
+type ColorPickerElement(props: IProperty list) =
+    inherit TerminalElement(props)
+
+    let setProps (element: ColorPicker) props =
+        props |> Interop.getValue<Color> "selectedColor" |> Option.iter (fun v -> element.SelectedColor <- v)
+
+        props
+        |> Interop.getValue<Color -> unit> "onColorChanged"
+        |> Option.iter (fun f ->
+            Interop.bridgeEvent element "ValueChanged"
+                (fun v b -> (v :?> ColorPicker).ValueChanged.Add (fun e -> b.invoke (box e)))
+                (fun o ->
+                    let e = o :?> ValueChangedEventArgs<Nullable<Color>>
+                    if e.NewValue.HasValue then f e.NewValue.Value))
+
+    let removeProps (element: ColorPicker) props =
+        props |> Interop.getValue<Color -> unit> "onColorChanged" |> Option.iter (fun _ -> Interop.clearEvent element "ValueChanged")
+
+    override _.name = "ColorPicker"
+
+    override this.create parent =
+        this.parent <- parent
+        let el = new ColorPicker()
+        parent |> Option.iter (fun p -> p.Add el |> ignore)
+        ViewElement.setProps el props
+        setProps el props
+        props |> Interop.getValue<View -> unit> "ref" |> Option.iter (fun v -> v el)
+        this.element <- el
+
+    override this.canUpdate prevElement oldProps =
+        let (changedProps, removedProps) = Interop.filterProps oldProps props
+        ViewElement.canUpdate prevElement changedProps removedProps
+
+    override this.update prevElement oldProps =
+        let element = prevElement :?> ColorPicker
+        let (changedProps, removedProps) = Interop.filterProps oldProps props
+        ViewElement.removeProps prevElement removedProps
+        removeProps element removedProps
+        ViewElement.setProps prevElement changedProps
+        setProps element changedProps
+        this.element <- prevElement
+
+
+type TextValidateFieldElement(props: IProperty list) =
+    inherit TerminalElement(props)
+
+    let setProps (element: TextValidateField) props =
+        props |> Interop.getValue<ITextValidateProvider> "provider" |> Option.iter (fun v -> element.Provider <- v)
+        props |> Interop.getValue<string> "text" |> Option.iter (fun v -> if Checker.textChanged element v then element.Text <- v)
+
+    override _.name = "TextValidateField"
+
+    override this.create parent =
+        this.parent <- parent
+        let el = new TextValidateField()
+        parent |> Option.iter (fun p -> p.Add el |> ignore)
+        ViewElement.setProps el props
+        setProps el props
+        props |> Interop.getValue<View -> unit> "ref" |> Option.iter (fun v -> v el)
+        this.element <- el
+
+    override this.canUpdate prevElement oldProps =
+        let (changedProps, removedProps) = Interop.filterProps oldProps props
+        ViewElement.canUpdate prevElement changedProps removedProps
+
+    override this.update prevElement oldProps =
+        let element = prevElement :?> TextValidateField
+        let (changedProps, removedProps) = Interop.filterProps oldProps props
+        ViewElement.removeProps prevElement removedProps
+        ViewElement.setProps prevElement changedProps
+        setProps element changedProps
+        this.element <- prevElement
+
+
+/// v1 TabView -> v2 Tabs. Each child element becomes a tab; its `title` is the tab label.
+type TabsElement(props: IProperty list) =
+    inherit TerminalElement(props)
+
+    let setProps (element: Tabs) props =
+        props
+        |> Interop.getValue<View -> unit> "onSelectedTabChanged"
+        |> Option.iter (fun f ->
+            Interop.bridgeEvent element "ValueChanged"
+                (fun v b -> (v :?> Tabs).ValueChanged.Add (fun e -> b.invoke (box e)))
+                (fun o ->
+                    let e = o :?> ValueChangedEventArgs<View>
+                    if not (isNull e.NewValue) then f e.NewValue))
+
+    let removeProps (element: Tabs) props =
+        props |> Interop.getValue<View -> unit> "onSelectedTabChanged" |> Option.iter (fun _ -> Interop.clearEvent element "ValueChanged")
+
+    override _.name = "Tabs"
+
+    override this.create parent =
+        this.parent <- parent
+        let el = new Tabs()
+        parent |> Option.iter (fun p -> p.Add el |> ignore)
+        ViewElement.setProps el props
+        setProps el props
+        props |> Interop.getValue<View -> unit> "ref" |> Option.iter (fun v -> v el)
+        this.element <- el
+
+    override this.canUpdate prevElement oldProps =
+        let (changedProps, removedProps) = Interop.filterProps oldProps props
+        ViewElement.canUpdate prevElement changedProps removedProps
+
+    override this.update prevElement oldProps =
+        let element = prevElement :?> Tabs
+        let (changedProps, removedProps) = Interop.filterProps oldProps props
+        ViewElement.removeProps prevElement removedProps
+        removeProps element removedProps
+        ViewElement.setProps prevElement changedProps
+        setProps element changedProps
+        this.element <- prevElement
+
+
+type TableViewElement(props: IProperty list) =
+    inherit TerminalElement(props)
+
+    let setProps (element: TableView) props =
+        props |> Interop.getValue<DataTable> "table" |> Option.iter (fun v -> element.Table <- DataTableSource v)
+
+        props
+        |> Interop.getValue<TableSelection -> unit> "onSelectedCellChanged"
+        |> Option.iter (fun f ->
+            Interop.bridgeEvent element "ValueChanged"
+                (fun v b -> (v :?> TableView).ValueChanged.Add (fun e -> b.invoke (box e)))
+                (fun o ->
+                    let e = o :?> ValueChangedEventArgs<TableSelection>
+                    if not (isNull e.NewValue) then f e.NewValue))
+
+    let removeProps (element: TableView) props =
+        props |> Interop.getValue<TableSelection -> unit> "onSelectedCellChanged" |> Option.iter (fun _ -> Interop.clearEvent element "ValueChanged")
+
+    override _.name = "TableView"
+
+    override this.create parent =
+        this.parent <- parent
+        let el = new TableView()
+        parent |> Option.iter (fun p -> p.Add el |> ignore)
+        ViewElement.setProps el props
+        setProps el props
+        props |> Interop.getValue<View -> unit> "ref" |> Option.iter (fun v -> v el)
+        this.element <- el
+
+    override this.canUpdate prevElement oldProps =
+        let (changedProps, removedProps) = Interop.filterProps oldProps props
+        ViewElement.canUpdate prevElement changedProps removedProps
+
+    override this.update prevElement oldProps =
+        let element = prevElement :?> TableView
+        let (changedProps, removedProps) = Interop.filterProps oldProps props
+        ViewElement.removeProps prevElement removedProps
+        removeProps element removedProps
+        ViewElement.setProps prevElement changedProps
+        setProps element changedProps
+        this.element <- prevElement
+
+
+type TreeViewElement(props: IProperty list) =
+    inherit TerminalElement(props)
+
+    let setProps (element: TreeView<ITreeNode>) props =
+        props
+        |> Interop.getValue<ITreeNode list> "nodes"
+        |> Option.iter (fun nodes ->
+            element.ClearObjects()
+            element.AddObjects(nodes))
+
+        props |> Interop.getValue<ITreeNode> "selectedObject" |> Option.iter (fun v -> element.SelectedObject <- v)
+
+        props
+        |> Interop.getValue<ITreeNode -> unit> "onSelectionChanged"
+        |> Option.iter (fun f ->
+            Interop.bridgeEvent element "SelectionChanged"
+                (fun v b -> (v :?> TreeView<ITreeNode>).SelectionChanged.Add (fun e -> b.invoke (box e)))
+                (fun o ->
+                    let e = o :?> SelectionChangedEventArgs<ITreeNode>
+                    if not (isNull e.NewValue) then f e.NewValue))
+
+        // v2 has no ObjectActivated event; activation flows through the base Accept command.
+        props
+        |> Interop.getValue<ITreeNode -> unit> "onObjectActivated"
+        |> Option.iter (fun f ->
+            Interop.bridgeEvent element "Accepted"
+                (fun v b -> v.Accepted.Add (fun _ -> b.invoke null))
+                (fun _ ->
+                    let o = element.SelectedObject
+                    if not (isNull (box o)) then f o))
+
+    let removeProps (element: TreeView<ITreeNode>) props =
+        props |> Interop.getValue<ITreeNode -> unit> "onSelectionChanged" |> Option.iter (fun _ -> Interop.clearEvent element "SelectionChanged")
+        props |> Interop.getValue<ITreeNode -> unit> "onObjectActivated" |> Option.iter (fun _ -> Interop.clearEvent element "Accepted")
+
+    override _.name = "TreeView"
+
+    override this.create parent =
+        this.parent <- parent
+        let el = new TreeView<ITreeNode>()
+        parent |> Option.iter (fun p -> p.Add el |> ignore)
+        ViewElement.setProps el props
+        setProps el props
+        props |> Interop.getValue<View -> unit> "ref" |> Option.iter (fun v -> v el)
+        this.element <- el
+
+    override this.canUpdate prevElement oldProps =
+        let (changedProps, removedProps) = Interop.filterProps oldProps props
+        ViewElement.canUpdate prevElement changedProps removedProps
+
+    override this.update prevElement oldProps =
+        let element = prevElement :?> TreeView<ITreeNode>
+        let (changedProps, removedProps) = Interop.filterProps oldProps props
+        ViewElement.removeProps prevElement removedProps
+        removeProps element removedProps
+        ViewElement.setProps prevElement changedProps
+        setProps element changedProps
+        this.element <- prevElement
+
+
+type HexViewElement(props: IProperty list) =
+    inherit TerminalElement(props)
+
+    let setProps (element: HexView) props =
+        props |> Interop.getValue<System.IO.Stream> "source" |> Option.iter (fun v -> element.Source <- v)
+        props |> Interop.getValue<bool> "allowEdits" |> Option.iter (fun v -> element.ReadOnly <- not v)
+
+        props
+        |> Interop.getValue<HexViewEditEventArgs -> unit> "onEdited"
+        |> Option.iter (fun f ->
+            Interop.bridgeEvent element "Edited"
+                (fun v b -> (v :?> HexView).Edited.Add (fun e -> b.invoke (box e)))
+                (fun o -> f (o :?> HexViewEditEventArgs)))
+
+        props
+        |> Interop.getValue<HexViewEventArgs -> unit> "onPositionChanged"
+        |> Option.iter (fun f ->
+            Interop.bridgeEvent element "PositionChanged"
+                (fun v b -> (v :?> HexView).PositionChanged.Add (fun e -> b.invoke (box e)))
+                (fun o -> f (o :?> HexViewEventArgs)))
+
+    let removeProps (element: HexView) props =
+        props |> Interop.getValue<HexViewEditEventArgs -> unit> "onEdited" |> Option.iter (fun _ -> Interop.clearEvent element "Edited")
+        props |> Interop.getValue<HexViewEventArgs -> unit> "onPositionChanged" |> Option.iter (fun _ -> Interop.clearEvent element "PositionChanged")
+
+    override _.name = "HexView"
+
+    override this.create parent =
+        this.parent <- parent
+        let el = new HexView()
+        parent |> Option.iter (fun p -> p.Add el |> ignore)
+        ViewElement.setProps el props
+        setProps el props
+        props |> Interop.getValue<View -> unit> "ref" |> Option.iter (fun v -> v el)
+        this.element <- el
+
+    override this.canUpdate prevElement oldProps =
+        let (changedProps, removedProps) = Interop.filterProps oldProps props
+        ViewElement.canUpdate prevElement changedProps removedProps
+
+    override this.update prevElement oldProps =
+        let element = prevElement :?> HexView
+        let (changedProps, removedProps) = Interop.filterProps oldProps props
+        ViewElement.removeProps prevElement removedProps
+        removeProps element removedProps
+        ViewElement.setProps prevElement changedProps
+        setProps element changedProps
+        this.element <- prevElement
+
+
+/// GraphView has a rich imperative API (axes, series). Configure it via `prop.ref`.
+type GraphViewElement(props: IProperty list) =
+    inherit TerminalElement(props)
+
+    override _.name = "GraphView"
+
+    override this.create parent =
+        this.parent <- parent
+        let el = new GraphView()
+        parent |> Option.iter (fun p -> p.Add el |> ignore)
+        ViewElement.setProps el props
+        props |> Interop.getValue<View -> unit> "ref" |> Option.iter (fun v -> v el)
+        this.element <- el
+
+    override this.canUpdate prevElement oldProps =
+        let (changedProps, removedProps) = Interop.filterProps oldProps props
+        ViewElement.canUpdate prevElement changedProps removedProps
+
+    override this.update prevElement oldProps =
+        let (changedProps, removedProps) = Interop.filterProps oldProps props
+        ViewElement.removeProps prevElement removedProps
+        ViewElement.setProps prevElement changedProps
+        this.element <- prevElement
+
+
+/// MenuBar built from pre-constructed v2 menus (see the `menu` builders in Props.fs).
+type MenuBarElement(props: IProperty list) =
+    inherit TerminalElement(props)
+
+    override _.name = "MenuBar"
+
+    override this.create parent =
+        this.parent <- parent
+        let menus = props |> Interop.getValueDefault<MenuBarItem list> "menus" []
+        let el = new MenuBar(menus |> List.map (fun m -> m :> MenuItem))
+        parent |> Option.iter (fun p -> p.Add el |> ignore)
+        ViewElement.setProps el props
+        props |> Interop.getValue<View -> unit> "ref" |> Option.iter (fun v -> v el)
+        this.element <- el
+
+    // The menu structure is fixed at creation; changing it recreates the bar.
+    override this.canUpdate prevElement oldProps =
+        let (_, removedProps) = Interop.filterProps oldProps props
+        let menusChanged = (Interop.filterProps oldProps props |> fst) |> Interop.valueExists "menus"
+        ViewElement.canUpdate prevElement (Interop.filterProps oldProps props |> fst) removedProps && not menusChanged
+
+    override this.update prevElement oldProps =
+        let (changedProps, removedProps) = Interop.filterProps oldProps props
+        ViewElement.removeProps prevElement removedProps
+        ViewElement.setProps prevElement changedProps
+        this.element <- prevElement
+
+
+/// StatusBar built from pre-constructed v2 Shortcuts (see the `statusItem` builders in Props.fs).
+type StatusBarElement(props: IProperty list) =
+    inherit TerminalElement(props)
+
+    override _.name = "StatusBar"
+
+    override this.create parent =
+        this.parent <- parent
+        let items = props |> Interop.getValueDefault<Shortcut list> "items" []
+        let el = new StatusBar(items)
+        parent |> Option.iter (fun p -> p.Add el |> ignore)
+        ViewElement.setProps el props
+        props |> Interop.getValue<View -> unit> "ref" |> Option.iter (fun v -> v el)
+        this.element <- el
+
+    override this.canUpdate prevElement oldProps =
+        let (changedProps, removedProps) = Interop.filterProps oldProps props
+        let itemsChanged = changedProps |> Interop.valueExists "items"
+        ViewElement.canUpdate prevElement changedProps removedProps && not itemsChanged
+
+    override this.update prevElement oldProps =
+        let (changedProps, removedProps) = Interop.filterProps oldProps props
+        ViewElement.removeProps prevElement removedProps
+        ViewElement.setProps prevElement changedProps
+        this.element <- prevElement
+
+
+/// Wizard has a rich imperative API (steps, navigation). Configure it via `prop.ref`.
+type WizardElement(props: IProperty list) =
+    inherit TerminalElement(props)
+
+    override _.name = "Wizard"
+
+    override this.create parent =
+        this.parent <- parent
+        let el = new Wizard()
+        parent |> Option.iter (fun p -> p.Add el |> ignore)
+        ViewElement.setProps el props
+        props |> Interop.getValue<View -> unit> "ref" |> Option.iter (fun v -> v el)
+        this.element <- el
+
+    override this.canUpdate prevElement oldProps =
+        let (changedProps, removedProps) = Interop.filterProps oldProps props
+        ViewElement.canUpdate prevElement changedProps removedProps
+
+    override this.update prevElement oldProps =
+        let (changedProps, removedProps) = Interop.filterProps oldProps props
+        ViewElement.removeProps prevElement removedProps
+        ViewElement.setProps prevElement changedProps
         this.element <- prevElement

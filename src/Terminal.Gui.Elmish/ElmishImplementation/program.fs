@@ -122,6 +122,7 @@ module Program =
     /// program: program created with 'mkSimple' or 'mkProgram'.
     let runWith (arg: 'arg) (program: Program<'arg, 'model, 'msg, 'view>) =
         use app = Application.Create().Init()
+        ElmishApp.current <- Some app
 
         let (model, cmd) = program.init arg
         let rb = RingBuffer 10
@@ -197,9 +198,15 @@ module Program =
                 app.Run (runnable, null) |> ignore
             | _ -> failwith "the first/root element must be `View.page`"
 
+        ElmishApp.current <- None
+
 
     /// Start the dispatch loop with `unit` for the init() function.
     let run (program: Program<unit, 'model, 'msg, 'view>) = runWith () program
+
+    /// Requests the running application to stop (the clean way to exit an Elmish program).
+    let requestStop () =
+        ElmishApp.current |> Option.iter (fun app -> app.RequestStop())
 
     let quitWithErrorCode errorcode =
         System.Console.Clear()

@@ -3,7 +3,20 @@ namespace Terminal.Gui.Elmish
 open System
 open System.Collections.Generic
 open System.Runtime.CompilerServices
+open Terminal.Gui.App
 open Terminal.Gui.ViewBase
+
+/// Holds the currently running application instance so standalone helpers (dialogs,
+/// message boxes) can reach the v2 <see cref="IApplication"/> they now require.
+[<RequireQualifiedAccess>]
+module ElmishApp =
+    let mutable current: IApplication option = None
+
+    /// The running application. Throws if accessed before <c>Program.run</c> has started.
+    let require () =
+        match current with
+        | Some app -> app
+        | None -> failwith "No running Terminal.Gui.Elmish application. Call this from within a running Program."
 
 /// A single mutable event bridge: the CLR event is subscribed exactly once and
 /// invokes <c>invoke</c>, which reconciliation swaps in-place. This avoids the

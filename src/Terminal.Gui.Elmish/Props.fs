@@ -2,6 +2,7 @@ namespace Terminal.Gui.Elmish
 
 open System
 open Terminal.Gui.ViewBase
+open Terminal.Gui.Views
 open Terminal.Gui.Drawing
 open Terminal.Gui.Input
 open Terminal.Gui.Text
@@ -13,6 +14,7 @@ type prop =
     static member inline ref(reference: View -> unit) = Interop.mkprop "ref" reference
 
     static member inline id(value: string) = Interop.mkprop "id" value
+    static member inline title(value: string) = Interop.mkprop "title" value
 
     static member inline tabStop(value: TabBehavior) = Interop.mkprop "tabStop" value
     static member inline canFocus(value: bool) = Interop.mkprop "canFocus" value
@@ -140,3 +142,117 @@ type textView =
     static member inline wordWrap(value: bool) = Interop.mkprop "wordWrap" value
     static member inline multiline(value: bool) = Interop.mkprop "multiline" value
     static member inline onTextChanged(value: string -> unit) = Interop.mkprop "onTextChanged" value
+
+
+type progressBar =
+    static member inline text(value: string) = Interop.mkprop "text" value
+    static member inline fraction(value: float) = Interop.mkprop "fraction" value
+
+module progressBar =
+    type style =
+        static member inline blocks = Interop.mkprop "progressBarStyle" ProgressBarStyle.Blocks
+        static member inline continuous = Interop.mkprop "progressBarStyle" ProgressBarStyle.Continuous
+        static member inline marqueeBlocks = Interop.mkprop "progressBarStyle" ProgressBarStyle.MarqueeBlocks
+        static member inline marqueeContinuous = Interop.mkprop "progressBarStyle" ProgressBarStyle.MarqueeContinuous
+
+    type format =
+        static member inline simple = Interop.mkprop "progressBarFormat" ProgressBarFormat.Simple
+        static member inline simplePlusPercentage = Interop.mkprop "progressBarFormat" ProgressBarFormat.SimplePlusPercentage
+
+
+type lineView =
+    static member inline horizontal = Interop.mkprop "orientation" Orientation.Horizontal
+    static member inline vertical = Interop.mkprop "orientation" Orientation.Vertical
+
+
+type listView =
+    static member inline source(items: string list) = Interop.mkprop "source" items
+    static member inline selectedItem(index: int) = Interop.mkprop "selectedItem" index
+    static member inline onSelectedItemChanged(f: int -> unit) = Interop.mkprop "onSelectedItemChanged" f
+
+
+/// v1 radioGroup -> v2 OptionSelector.
+type radioGroup =
+    static member inline radioLabels(labels: string list) = Interop.mkprop "radioLabels" labels
+    static member inline selectedItem(index: int) = Interop.mkprop "selectedItem" index
+    static member inline onSelectedItemChanged(f: int -> unit) = Interop.mkprop "onSelectedItemChanged" f
+
+
+/// v1 comboBox -> v2 DropDownList.
+type comboBox =
+    static member inline source(items: string list) = Interop.mkprop "source" items
+    static member inline text(value: string) = Interop.mkprop "text" value
+    static member inline readonly(value: bool) = Interop.mkprop "readonly" value
+    static member inline onTextChanged(f: string -> unit) = Interop.mkprop "onTextChanged" f
+
+
+/// v1 dateField -> v2 DatePicker.
+type dateField =
+    static member inline date(value: System.DateTime) = Interop.mkprop "date" value
+    static member inline onDateChanged(f: System.DateTime -> unit) = Interop.mkprop "onDateChanged" f
+
+
+type colorPicker =
+    static member inline selectedColor(value: Color) = Interop.mkprop "selectedColor" value
+    static member inline onColorChanged(f: Color -> unit) = Interop.mkprop "onColorChanged" f
+
+
+type textValidateField =
+    static member inline provider(value: ITextValidateProvider) = Interop.mkprop "provider" value
+    static member inline text(value: string) = Interop.mkprop "text" value
+
+
+/// v1 tabView -> v2 Tabs. Tabs are the child elements; set each child's `prop.title`.
+type tabView =
+    static member inline children(children: TerminalElement list) = Interop.mkprop "children" children
+    static member inline onSelectedTabChanged(f: View -> unit) = Interop.mkprop "onSelectedTabChanged" f
+
+
+type tableView =
+    static member inline table(value: System.Data.DataTable) = Interop.mkprop "table" value
+    static member inline onSelectedCellChanged(f: TableSelection -> unit) = Interop.mkprop "onSelectedCellChanged" f
+
+
+type treeView =
+    static member inline nodes(value: ITreeNode list) = Interop.mkprop "nodes" value
+    static member inline selectedObject(value: ITreeNode) = Interop.mkprop "selectedObject" value
+    static member inline onSelectionChanged(f: ITreeNode -> unit) = Interop.mkprop "onSelectionChanged" f
+    static member inline onObjectActivated(f: ITreeNode -> unit) = Interop.mkprop "onObjectActivated" f
+
+
+type hexView =
+    static member inline source(value: System.IO.Stream) = Interop.mkprop "source" value
+    static member inline allowEdits(value: bool) = Interop.mkprop "allowEdits" value
+    static member inline onEdited(f: HexViewEditEventArgs -> unit) = Interop.mkprop "onEdited" f
+    static member inline onPositionChanged(f: HexViewEventArgs -> unit) = Interop.mkprop "onPositionChanged" f
+
+
+/// Builders for v2 menu structures used by `View.menuBar`.
+type menu =
+    /// A leaf menu item that runs an action when chosen.
+    static member item(title: string, action: unit -> unit) : MenuItem =
+        MenuItem(commandText = title, action = System.Action(action))
+
+    /// A horizontal separator line inside a menu.
+    static member separator : View = new Line() :> View
+
+    /// A top-level menu (or submenu) containing the given items.
+    static member sub(title: string, items: MenuItem list) : MenuBarItem =
+        MenuBarItem(title, items |> List.map (fun i -> i :> View) |> List.toSeq)
+
+
+type menuBar =
+    static member inline menus(menus: MenuBarItem list) = Interop.mkprop "menus" menus
+
+
+/// Builders for v2 status bar items used by `View.statusBar`.
+type statusItem =
+    static member create(title: string, action: unit -> unit) : Shortcut =
+        Shortcut(Key.Empty, title, System.Action(action))
+
+    static member create(key: Key, title: string, action: unit -> unit) : Shortcut =
+        Shortcut(key, title, System.Action(action))
+
+
+type statusBar =
+    static member inline items(items: Shortcut list) = Interop.mkprop "items" items
