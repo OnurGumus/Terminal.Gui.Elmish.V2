@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Terminal.Gui.Elmish</RootNamespace>
+    <AssemblyName>Terminal.Gui.Elmish</AssemblyName>
+    <OutputType>Library</OutputType>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <Nullable>enable</Nullable>
+    <WarningLevel>3</WarningLevel>
+    <!-- F# wrappers intentionally shadow some Terminal.Gui names; keep noise down. -->
+    <NoWarn>$(NoWarn);FS0064;FS3370</NoWarn>
+
+    <PackageId>Terminal.Gui.Elmish</PackageId>
+    <Authors>Daniel Hardt; Terminal.Gui.Elmish contributors</Authors>
+    <Description>An Elmish (MVU) wrapper around Terminal.Gui v2 with a Feliz-like view DSL for F#.</Description>
+    <PackageTags>fsharp;f#;gui;console;tui;ui;elmish;feliz;terminal</PackageTags>
+    <PackageProjectUrl>https://github.com/DieselMeister/Terminal.Gui.Elmish</PackageProjectUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Types.fs" />
+    <Compile Include="Interop.fs" />
+    <Compile Include="Elements.fs" />
+    <Compile Include="Props.fs" />
+    <Compile Include="Views.fs" />
+    <Compile Include="TreeDiff.fs" />
+    <Compile Include="ElmishImplementation/cmd.fs" />
+    <Compile Include="ElmishImplementation/prelude.fs" />
+    <Compile Include="ElmishImplementation/ring.fs" />
+    <Compile Include="ElmishImplementation/program.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Terminal.Gui\Terminal.Gui\Terminal.Gui.csproj" />
+  </ItemGroup>
+
+</Project>
