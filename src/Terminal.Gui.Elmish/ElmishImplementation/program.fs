@@ -195,6 +195,9 @@ module Program =
                         Cmd.none
 
                 sub @ cmd |> Cmd.exec syncDispatch
+                // Force the first paint once the main loop is running; otherwise the
+                // initial tree is laid out but not drawn until the first dispatch.
+                app.Invoke (System.Action (fun () -> app.LayoutAndDraw true))
                 app.Run (runnable, null) |> ignore
             | _ -> failwith "the first/root element must be `View.page`"
 
