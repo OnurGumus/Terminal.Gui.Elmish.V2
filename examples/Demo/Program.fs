@@ -10,8 +10,14 @@ let col (name: string) : Color = Color name
 
 // ---------------------------------------------------------------- Model
 
+type Page =
+    | Counter
+    | Form
+    | Lists
+
 type Model =
-    { Count: int
+    { Page: Page
+      Count: int
       Name: string
       Subscribed: bool
       Theme: int
@@ -21,6 +27,7 @@ type Model =
       LastAction: string }
 
 type Msg =
+    | GoTo of Page
     | Increment
     | Decrement
     | Reset
@@ -36,7 +43,8 @@ type Msg =
 let fruits = [ "Apple"; "Banana"; "Cherry"; "Date"; "Elderberry" ]
 
 let init () : Model * Cmd<Msg> =
-    { Count = 0
+    { Page = Counter
+      Count = 0
       Name = ""
       Subscribed = false
       Theme = 0
@@ -50,6 +58,7 @@ let init () : Model * Cmd<Msg> =
 
 let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
     match msg with
+    | GoTo p -> { model with Page = p; LastAction = $"Opened {p}" }, Cmd.none
     | Increment -> { model with Count = model.Count + 1; LastAction = "Incremented" }, Cmd.none
     | Decrement -> { model with Count = model.Count - 1; LastAction = "Decremented" }, Cmd.none
     | Reset -> { model with Count = 0; LastAction = "Reset" }, Cmd.none
@@ -78,128 +87,132 @@ let clock dispatch =
     timer.Elapsed.Add(fun _ -> dispatch (Tick(DateTime.Now.ToString "HH:mm:ss")))
     timer.Start()
 
-// ---------------------------------------------------------------- View helpers
+// ---------------------------------------------------------------- Pages
 
-let themeColors theme =
-    match theme with
-    | 1 -> col "White", col "Black" // Dark
-    | 2 -> col "BrightYellow", col "Blue" // Ocean
-    | _ -> col "White", col "BrightBlue" // Default
+let counterPage model dispatch =
+    [ View.label [
+          prop.id "count"
+          prop.position.x.center
+          prop.position.y.at 1
+          prop.textAlignment.centered
+          prop.color (col "BrightGreen", col "Black")
+          label.text $"  Count = {model.Count}  "
+      ]
 
-/// A bordered tab page. Border is suppressed so only the tab strip frames it.
-let tab title (children: TerminalElement list) =
-    View.frameView [
-        prop.title title
-        prop.borderStyle borderStyle.none
-        prop.width.filled
-        prop.height.filled
-        frameView.children children
-    ]
+      View.progressBar [
+          prop.id "bar"
+          prop.position.x.center
+          prop.position.y.at 3
+          prop.width.percent 50
+          progressBar.fraction (float (((model.Count % 21) + 21) % 21) / 20.0)
+          progressBar.style.blocks
+      ]
+
+      View.button [ prop.id "inc"; prop.position.x.center; prop.position.y.at 5; button.text "Up"; button.isDefault true; button.onClick (fun () -> dispatch Increment) ]
+      View.button [ prop.id "dec"; prop.position.x.center; prop.position.y.at 7; button.text "Down"; button.onClick (fun () -> dispatch Decrement) ]
+      View.button [ prop.id "rst"; prop.position.x.center; prop.position.y.at 9; button.text "Reset"; button.onClick (fun () -> dispatch Reset) ] ]
+
+let formPage model dispatch =
+    [ View.label [ prop.id "lblName"; prop.position.x.at 1; prop.position.y.at 1; label.text "Name:" ]
+      View.textField [
+          prop.id "name"
+          prop.position.x.at 10
+          prop.position.y.at 1
+          prop.width.sized 30
+          textField.text model.Name
+          textField.onTextChanged (NameChanged >> dispatch)
+      ]
+
+      View.label [
+          prop.id "greeting"
+          prop.position.x.at 1
+          prop.position.y.at 3
+          prop.color (col "BrightYellow", col "Black")
+          label.text (
+              let who = if model.Name = "" then "stranger" else model.Name
+              $"Hello, {who}!"
+          )
+      ]
+
+      View.checkBox [
+          prop.id "sub"
+          prop.position.x.at 1
+          prop.position.y.at 5
+          checkBox.text "Subscribe to the newsletter"
+          checkBox.isChecked model.Subscribed
+          checkBox.onToggled (fun e -> dispatch (SubscribedChanged e.current))
+      ]
+
+      View.label [ prop.id "lblTheme"; prop.position.x.at 1; prop.position.y.at 7; label.text "Theme:" ]
+      View.radioGroup [
+          prop.id "theme"
+          prop.position.x.at 10
+          prop.position.y.at 7
+          radioGroup.radioLabels [ "Default"; "Dark"; "Ocean" ]
+          radioGroup.selectedItem model.Theme
+          radioGroup.onSelectedItemChanged (ThemeChanged >> dispatch)
+      ]
+
+      View.label [ prop.id "lblFruit"; prop.position.x.at 1; prop.position.y.at 11; label.text "Fruit:" ]
+      View.comboBox [
+          prop.id "fruit"
+          prop.position.x.at 10
+          prop.position.y.at 11
+          prop.width.sized 20
+          comboBox.source fruits
+          comboBox.text model.Fruit
+          comboBox.onTextChanged (FruitChanged >> dispatch)
+      ] ]
+
+let listsPage model dispatch =
+    [ View.label [ prop.id "lblPick"; prop.position.x.at 1; prop.position.y.at 1; label.text "Pick a fruit:" ]
+      View.listView [
+          prop.id "list"
+          prop.position.x.at 1
+          prop.position.y.at 3
+          prop.width.sized 24
+          prop.height.sized 6
+          listView.source fruits
+          listView.selectedItem model.Selected
+          listView.onSelectedItemChanged (ItemSelected >> dispatch)
+      ]
+
+      View.lineView [ prop.id "sep"; prop.position.x.at 28; prop.position.y.at 3; prop.height.sized 6; lineView.vertical ]
+
+      View.label [
+          prop.id "detail"
+          prop.position.x.at 31
+          prop.position.y.at 4
+          prop.color (col "BrightMagenta", col "Black")
+          label.text $"You chose:\n  {fruits.[model.Selected]}"
+      ] ]
 
 // ---------------------------------------------------------------- View
 
-let counterTab model dispatch =
-    tab "_Counter" [
-        View.label [
-            prop.position.x.center
-            prop.position.y.at 1
-            prop.textAlignment.centered
-            prop.color (col "BrightGreen", col "Black")
-            label.text $"  Count = {model.Count}  "
-        ]
+let themeColors theme =
+    match theme with
+    | 1 -> col "White", col "Black"
+    | 2 -> col "BrightYellow", col "Blue"
+    | _ -> col "Black", col "Gray"
 
-        View.progressBar [
-            prop.position.x.center
-            prop.position.y.at 3
-            prop.width.percent 60
-            progressBar.fraction (float (((model.Count % 21) + 21) % 21) / 20.0)
-            progressBar.style.blocks
-        ]
-
-        View.button [ prop.id "inc"; prop.position.x.center; prop.position.y.at 5; button.text "  Up  "; button.isDefault true; button.onClick (fun () -> dispatch Increment) ]
-        View.button [ prop.id "dec"; prop.position.x.center; prop.position.y.at 7; button.text " Down "; button.onClick (fun () -> dispatch Decrement) ]
-        View.button [ prop.id "rst"; prop.position.x.center; prop.position.y.at 9; button.text " Reset "; button.onClick (fun () -> dispatch Reset) ]
-    ]
-
-let formTab model dispatch =
-    tab "_Form" [
-        View.label [ prop.position.x.at 1; prop.position.y.at 1; label.text "Name:" ]
-        View.textField [
-            prop.id "name"
-            prop.position.x.at 10
-            prop.position.y.at 1
-            prop.width.sized 28
-            textField.text model.Name
-            textField.onTextChanged (NameChanged >> dispatch)
-        ]
-
-        View.label [
-            prop.position.x.at 1
-            prop.position.y.at 3
-            prop.color (col "BrightYellow", col "Black")
-            label.text (
-                let who = if model.Name = "" then "stranger" else model.Name
-                $"Hello, {who}!"
-            )
-        ]
-
-        View.checkBox [
-            prop.id "sub"
-            prop.position.x.at 1
-            prop.position.y.at 5
-            checkBox.text "Subscribe to the newsletter"
-            checkBox.isChecked model.Subscribed
-            checkBox.onToggled (fun e -> dispatch (SubscribedChanged e.current))
-        ]
-
-        View.label [ prop.position.x.at 1; prop.position.y.at 7; label.text "Theme:" ]
-        View.radioGroup [
-            prop.id "theme"
-            prop.position.x.at 10
-            prop.position.y.at 7
-            radioGroup.radioLabels [ "Default"; "Dark"; "Ocean" ]
-            radioGroup.selectedItem model.Theme
-            radioGroup.onSelectedItemChanged (ThemeChanged >> dispatch)
-        ]
-
-        View.label [ prop.position.x.at 1; prop.position.y.at 11; label.text "Fruit:" ]
-        View.comboBox [
-            prop.id "fruit"
-            prop.position.x.at 10
-            prop.position.y.at 11
-            prop.width.sized 20
-            comboBox.source fruits
-            comboBox.text model.Fruit
-            comboBox.onTextChanged (FruitChanged >> dispatch)
-        ]
-    ]
-
-let listsTab model dispatch =
-    tab "_Lists" [
-        View.label [ prop.position.x.at 1; prop.position.y.at 1; label.text "Pick a fruit:" ]
-        View.listView [
-            prop.id "list"
-            prop.position.x.at 1
-            prop.position.y.at 3
-            prop.width.sized 24
-            prop.height.sized 6
-            listView.source fruits
-            listView.selectedItem model.Selected
-            listView.onSelectedItemChanged (ItemSelected >> dispatch)
-        ]
-
-        View.lineView [ prop.position.x.at 28; prop.position.y.at 3; prop.height.sized 6; lineView.vertical ]
-
-        View.label [
-            prop.position.x.at 31
-            prop.position.y.at 4
-            prop.color (col "BrightMagenta", col "Black")
-            label.text $"You chose:\n  {fruits.[model.Selected]}"
-        ]
+/// A page-nav button that highlights the active page.
+let navButton (model: Model) dispatch (page: Page) (text: string) (x: int) =
+    View.button [
+        prop.id $"nav{page}"
+        prop.position.x.at x
+        prop.position.y.at 0
+        button.text (if model.Page = page then $"[ {text} ]" else $"  {text}  ")
+        button.onClick (fun () -> dispatch (GoTo page))
     ]
 
 let view (model: Model) (dispatch: Msg -> unit) =
     let fg, bg = themeColors model.Theme
+
+    let pageContent =
+        match model.Page with
+        | Counter -> counterPage model dispatch
+        | Form -> formPage model dispatch
+        | Lists -> listsPage model dispatch
 
     View.page [
         prop.children [
@@ -218,19 +231,25 @@ let view (model: Model) (dispatch: Msg -> unit) =
                 prop.color (fg, bg)
                 window.title $"  Terminal.Gui.Elmish Demo  -  {model.Clock}  "
                 window.children [
-                    View.tabView [
+                    navButton model dispatch Counter "Counter" 1
+                    navButton model dispatch Form "Form" 14
+                    navButton model dispatch Lists "Lists" 24
+
+                    View.lineView [ prop.id "navrule"; prop.position.x.at 0; prop.position.y.at 2; prop.width.filled; lineView.horizontal ]
+
+                    // The active page lives in its own bordered frame.
+                    View.frameView [
+                        prop.id "pageframe"
                         prop.position.x.at 0
-                        prop.position.y.at 0
+                        prop.position.y.at 3
                         prop.width.filled
                         prop.height.fill 1
-                        tabView.children [
-                            counterTab model dispatch
-                            formTab model dispatch
-                            listsTab model dispatch
-                        ]
+                        frameView.title $" {model.Page} "
+                        frameView.children pageContent
                     ]
 
                     View.label [
+                        prop.id "status"
                         prop.position.x.at 1
                         prop.position.y.anchorEnd
                         prop.color (col "BrightGreen", bg)
@@ -243,7 +262,7 @@ let view (model: Model) (dispatch: Msg -> unit) =
                 statusBar.items [
                     statusItem.create ("Quit (Esc)", fun () -> dispatch Quit)
                     statusItem.create ("About", fun () -> dispatch ShowAbout)
-                    statusItem.create ("Tab moves - Arrows switch tabs - Enter/Space act", ignore)
+                    statusItem.create ("Tab moves - Enter/Space act", ignore)
                 ]
             ]
         ]
