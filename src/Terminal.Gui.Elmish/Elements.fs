@@ -1008,11 +1008,12 @@ type MenuBarElement(props: IProperty list) =
         props |> Interop.getValue<View -> unit> "ref" |> Option.iter (fun v -> v el)
         this.element <- el
 
-    // The menu structure is fixed at creation; changing it recreates the bar.
+    // The menu structure is fixed at creation. `menus` is rebuilt as new objects every
+    // render, so never treat it as a change that forces a recreate — that would churn
+    // focus on every dispatch. Update only the common view props in place.
     override this.canUpdate prevElement oldProps =
-        let (_, removedProps) = Interop.filterProps oldProps props
-        let menusChanged = (Interop.filterProps oldProps props |> fst) |> Interop.valueExists "menus"
-        ViewElement.canUpdate prevElement (Interop.filterProps oldProps props |> fst) removedProps && not menusChanged
+        let (changedProps, removedProps) = Interop.filterProps oldProps props
+        ViewElement.canUpdate prevElement changedProps removedProps
 
     override this.update prevElement oldProps =
         let (changedProps, removedProps) = Interop.filterProps oldProps props
@@ -1036,10 +1037,11 @@ type StatusBarElement(props: IProperty list) =
         props |> Interop.getValue<View -> unit> "ref" |> Option.iter (fun v -> v el)
         this.element <- el
 
+    // `items` is rebuilt as new objects every render; don't let that force a recreate
+    // (which would churn focus on every dispatch). Update common view props in place.
     override this.canUpdate prevElement oldProps =
         let (changedProps, removedProps) = Interop.filterProps oldProps props
-        let itemsChanged = changedProps |> Interop.valueExists "items"
-        ViewElement.canUpdate prevElement changedProps removedProps && not itemsChanged
+        ViewElement.canUpdate prevElement changedProps removedProps
 
     override this.update prevElement oldProps =
         let (changedProps, removedProps) = Interop.filterProps oldProps props
