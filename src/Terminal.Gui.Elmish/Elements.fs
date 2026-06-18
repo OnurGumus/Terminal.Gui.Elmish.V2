@@ -408,11 +408,25 @@ type TextViewElement(props: IProperty list) =
     inherit TerminalElement(props)
 
     let setProps (element: TextView) props =
-        props |> Interop.getValue<string> "text" |> Option.iter (fun v -> Checker.setEditableText element v)
-
         props |> Interop.getValue<bool> "readOnly" |> Option.iter (fun v -> element.ReadOnly <- v)
         props |> Interop.getValue<bool> "wordWrap" |> Option.iter (fun v -> element.WordWrap <- v)
         props |> Interop.getValue<bool> "multiline" |> Option.iter (fun v -> element.Multiline <- v)
+
+        let scrollToEnd = props |> Interop.getValue<bool> "scrollToEnd" |> Option.defaultValue false
+
+        props
+        |> Interop.getValue<string> "text"
+        |> Option.iter (fun v ->
+            if element.ReadOnly then
+                // Read-only views are purely model-driven: always reflect the latest text
+                // (the focus-skip guard is only for editable fields the user is typing in).
+                if element.Text <> v then
+                    element.Text <- v
+
+                    if scrollToEnd then
+                        element.MoveEnd() |> ignore
+            else
+                Checker.setEditableText element v)
 
         props
         |> Interop.getValue<string -> unit> "onTextChanged"

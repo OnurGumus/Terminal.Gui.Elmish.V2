@@ -3,6 +3,7 @@ module Demo
 open System
 open Terminal.Gui.Elmish
 open Terminal.Gui.Drawing
+open Terminal.Gui.ViewBase
 open Terminal.Gui.Elmish.Elements
 
 /// Build a Color from a Terminal.Gui v2 named color (avoids the inref ctor overload).
@@ -14,6 +15,9 @@ type Page =
     | Counter
     | Form
     | Lists
+    | Chat
+    | Data
+    | Chart
 
 type Model =
     { Page: Page
@@ -26,6 +30,9 @@ type Model =
       Theme: int
       Fruit: string
       Selected: int
+      ChatLog: string
+      ChatInput: string
+      Pending: string
       Clock: string
       LastAction: string }
 
@@ -41,8 +48,12 @@ type Msg =
     | ThemeChanged of int
     | FruitChanged of string
     | ItemSelected of int
+    | ChatInputChanged of string
+    | SendChat
+    | StreamTick
     | Tick of string
     | ShowAbout
+    | ConfirmReset
     | Quit
 
 let fruits = [ "Apple"; "Banana"; "Cherry"; "Date"; "Elderberry" ]
@@ -61,6 +72,27 @@ let private spinCmd: Cmd<Msg> =
                       }
                       |> Async.StartImmediate ]
 
+/// Re-arm the chat "typewriter" stream (one character per tick).
+let private streamCmd: Cmd<Msg> =
+    [ fun dispatch -> async {
+                          do! Async.Sleep 12
+                          dispatch StreamTick
+                      }
+                      |> Async.StartImmediate ]
+
+/// A canned, offline "assistant" reply so the demo needs no network.
+let cannedReply (prompt: string) =
+    let p = prompt.ToLowerInvariant()
+
+    if p.Contains "hello" || p.Contains "hi" then
+        "Hello there! I'm a pretend assistant rendered entirely in the terminal with Terminal.Gui.Elmish."
+    elif p.Contains "elmish" || p.Contains "mvu" then
+        "Elmish is the Model-View-Update pattern: your view is a pure function of state, and messages drive updates. This whole UI is built that way."
+    elif p.Contains "?" then
+        "Great question! In this demo I only have a few scripted answers - but the streaming, scrolling, and input are all real."
+    else
+        $"You said: \"{prompt}\". I'm streaming this reply one character at a time over an async Cmd, marshaled back onto the UI thread."
+
 let init () : Model * Cmd<Msg> =
     { Page = Counter
       Count = 0
@@ -72,6 +104,9 @@ let init () : Model * Cmd<Msg> =
       Theme = 0
       Fruit = "Apple"
       Selected = 0
+      ChatLog = "Claude: Hi! Ask me anything. (This is a canned, offline demo.)\n"
+      ChatInput = ""
+      Pending = ""
       Clock = DateTime.Now.ToString "HH:mm:ss"
       LastAction = "Welcome!" },
     Cmd.none
@@ -102,6 +137,24 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
     | ThemeChanged i -> { model with Theme = i; LastAction = "Theme changed" }, Cmd.none
     | FruitChanged f -> { model with Fruit = f; LastAction = $"Picked {f}" }, Cmd.none
     | ItemSelected i -> { model with Selected = i; LastAction = $"Selected {fruits.[i]}" }, Cmd.none
+    | ChatInputChanged s -> { model with ChatInput = s }, Cmd.none
+    | SendChat ->
+        let text = model.ChatInput.Trim()
+
+        if text = "" then
+            model, Cmd.none
+        else
+            let log = model.ChatLog + $"\nYou: {text}\n\nClaude: "
+            { model with ChatLog = log; ChatInput = ""; Pending = cannedReply text; LastAction = "Sent message" }, streamCmd
+    | StreamTick ->
+        match model.Pending with
+        | "" -> model, Cmd.none
+        | pending ->
+            { model with ChatLog = model.ChatLog + string pending.[0]; Pending = pending.[1..] }, streamCmd
+    | ConfirmReset ->
+        match Dialogs.messageBox "Confirm" "Reset the counter to zero?" [ "Yes"; "No" ] with
+        | "Yes" -> { model with Count = 0; History = pushHistory 0 model.History; LastAction = "Reset (confirmed)" }, Cmd.none
+        | _ -> { model with LastAction = "Reset cancelled" }, Cmd.none
     | Tick t -> { model with Clock = t; Frame = model.Frame + 1 }, Cmd.none
     | ShowAbout ->
         Dialogs.messageBox
@@ -150,10 +203,10 @@ let themeColors theme =
 
 // ---------------------------------------------------------------- Pages
 
-// Page content is placed directly in the window (one focus group) starting at row `y0`,
-// so plain Tab reaches every control. No `isDefault` button: Enter/Space act on the
-// focused button rather than always hitting one default.
-let y0 = 4
+// Page content lives inside a borderless FrameView (which repaints its whole viewport,
+// so switching pages leaves no stale cells). The frame's TabStop is NoStop so its
+// controls still join the window's single tab order. Positions are frame-relative.
+let y0 = 0
 
 let counterPage model dispatch =
     let _, bg = themeColors model.Theme
@@ -179,7 +232,7 @@ let counterPage model dispatch =
 
       View.button [ prop.id "inc"; prop.position.x.at 2; prop.position.y.at (y0 + 5); button.text "Up"; button.onClick (fun () -> dispatch Increment) ]
       View.button [ prop.id "dec"; prop.position.x.at 12; prop.position.y.at (y0 + 5); button.text "Down"; button.onClick (fun () -> dispatch Decrement) ]
-      View.button [ prop.id "rst"; prop.position.x.at 24; prop.position.y.at (y0 + 5); button.text "Reset"; button.onClick (fun () -> dispatch Reset) ]
+      View.button [ prop.id "rst"; prop.position.x.at 24; prop.position.y.at (y0 + 5); button.text "Reset"; button.onClick (fun () -> dispatch ConfirmReset) ]
 
       View.button [
           prop.id "spin"
@@ -273,6 +326,81 @@ let listsPage model dispatch =
           label.text $"You chose:\n  {fruits.[model.Selected]}"
       ] ]
 
+/// A Claude-style chat: a scrollable read-only transcript that auto-streams a canned reply.
+let chatPage model dispatch =
+    [ View.textView [
+          prop.id "transcript"
+          prop.position.x.at 2
+          prop.position.y.at (y0 + 1)
+          prop.width.fill 2
+          prop.height.fill 3
+          textView.readOnly true
+          textView.wordWrap true
+          textView.scrollToEnd
+          textView.text model.ChatLog
+      ]
+
+      View.label [ prop.id "youlbl"; prop.position.x.at 2; prop.position.y.fromBottom 2; label.text "You:" ]
+      View.textField [
+          prop.id "chatinput"
+          prop.position.x.at 7
+          prop.position.y.fromBottom 2
+          prop.width.fill 12
+          textField.text model.ChatInput
+          textField.onTextChanged (ChatInputChanged >> dispatch)
+      ]
+      View.button [ prop.id "send"; prop.position.x.anchorEnd; prop.position.y.fromBottom 2; button.text "Send"; button.onClick (fun () -> dispatch SendChat) ] ]
+
+/// A TableView bound to a System.Data.DataTable (built once so it isn't reset each render).
+let dataTable: System.Data.DataTable =
+    let t = new System.Data.DataTable()
+    [ "Fruit"; "Colour"; "Tartness"; "In stock" ] |> List.iter (fun c -> t.Columns.Add c |> ignore)
+
+    // Pass obj[] so DataRowCollection.Add(params object[]) spreads across columns
+    // instead of treating a string[] as a single cell value.
+    [ [| box "Apple"; box "Red"; box "Low"; box "120" |]
+      [| box "Banana"; box "Yellow"; box "None"; box "80" |]
+      [| box "Cherry"; box "Crimson"; box "Medium"; box "240" |]
+      [| box "Date"; box "Brown"; box "None"; box "35" |]
+      [| box "Elderberry"; box "Purple"; box "High"; box "12" |]
+      [| box "Fig"; box "Green"; box "Low"; box "60" |]
+      [| box "Grape"; box "Green"; box "Low"; box "300" |] ]
+    |> List.iter (fun row -> t.Rows.Add row |> ignore)
+
+    t
+
+let dataPage model dispatch =
+    [ View.label [ prop.id "datalbl"; prop.position.x.at 2; prop.position.y.at (y0 + 1); label.text "A TableView bound to a System.Data.DataTable (arrows to navigate):" ]
+      View.tableView [
+          prop.id "table"
+          prop.position.x.at 2
+          prop.position.y.at (y0 + 3)
+          prop.width.fill 2
+          prop.height.fill 2
+          tableView.table dataTable
+      ] ]
+
+/// A live horizontal bar chart of the counter history (animates while auto-spinning).
+let chartPage model dispatch =
+    let _, bg = themeColors model.Theme
+    let recent = model.History |> List.rev |> List.truncate 14 |> List.rev
+    let mx = max 1 (recent |> List.map abs |> List.fold max 0)
+
+    let bars =
+        recent
+        |> List.mapi (fun i v ->
+            let len = abs v * 40 / mx
+            View.label [
+                prop.id $"bar{i}"
+                prop.position.x.at 2
+                prop.position.y.at (y0 + 2 + i)
+                prop.color (col "BrightGreen", bg)
+                label.text $"{v,5} |{String('█', len)}"
+            ])
+
+    View.label [ prop.id "chartlbl"; prop.position.x.at 2; prop.position.y.at (y0 + 1); label.text "Counter history (start Auto Spin on the Counter page):" ]
+    :: bars
+
 // ---------------------------------------------------------------- View
 
 /// A page-nav button. The active page is highlighted with an inverted colour scheme
@@ -297,6 +425,9 @@ let view (model: Model) (dispatch: Msg -> unit) =
         | Counter -> counterPage model dispatch
         | Form -> formPage model dispatch
         | Lists -> listsPage model dispatch
+        | Chat -> chatPage model dispatch
+        | Data -> dataPage model dispatch
+        | Chart -> chartPage model dispatch
 
     View.page [
         prop.children [
@@ -314,29 +445,37 @@ let view (model: Model) (dispatch: Msg -> unit) =
                 prop.height.fill 1
                 prop.color (fg, bg)
                 window.title $"  {spinner model}  Terminal.Gui.Elmish Demo  -  {model.Clock}  "
-                window.children (
-                    [ navButton model dispatch Counter "Counter" 2
-                      navButton model dispatch Form "Form" 17
-                      navButton model dispatch Lists "Lists" 29
+                window.children [
+                    navButton model dispatch Counter "Counter" 2
+                    navButton model dispatch Form "Form" 17
+                    navButton model dispatch Lists "Lists" 28
+                    navButton model dispatch Chat "Chat" 40
+                    navButton model dispatch Data "Data" 51
+                    navButton model dispatch Chart "Chart" 62
 
-                      View.lineView [ prop.id "navrule"; prop.position.x.at 0; prop.position.y.at 2; prop.width.filled; lineView.horizontal ]
+                    // Active page in a bordered frame. NoStop keeps its controls in the
+                    // window's tab order; the frame repaints its viewport so page switches
+                    // leave no leftover cells.
+                    View.frameView (
+                        [ prop.id "pageframe"
+                          prop.position.x.at 1
+                          prop.position.y.at 2
+                          prop.width.fill 1
+                          prop.height.fill 1
+                          prop.tabStop TabBehavior.NoStop
+                          prop.color (fg, bg)
+                          frameView.title $" {model.Page} " ]
+                        @ [ frameView.children pageContent ]
+                    )
 
-                      View.label [
-                          prop.id "pagetitle"
-                          prop.position.x.at 2
-                          prop.position.y.at 3
-                          prop.color (col "BrightCyan", bg)
-                          label.text $"- {model.Page} -"
-                      ] ]
-                    @ pageContent
-                    @ [ View.label [
-                            prop.id "status"
-                            prop.position.x.at 1
-                            prop.position.y.anchorEnd
-                            prop.color (col "BrightGreen", bg)
-                            label.text $"Last action: {model.LastAction}"
-                        ] ]
-                )
+                    View.label [
+                        prop.id "status"
+                        prop.position.x.at 1
+                        prop.position.y.anchorEnd
+                        prop.color (col "BrightGreen", bg)
+                        label.text $"Last action: {model.LastAction}"
+                    ]
+                ]
             ]
 
             View.statusBar [

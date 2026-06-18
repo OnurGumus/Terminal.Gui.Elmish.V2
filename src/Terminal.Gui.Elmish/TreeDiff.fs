@@ -26,13 +26,22 @@ module Differ =
         tree.children |> List.iter (fun child -> initializeTree (Some tree.element) child)
 
 
-    let private dispose (parent: View option) (node: TerminalElement) =
-        parent |> Option.iter (fun p -> p.Remove node.element |> ignore)
+    /// Incremented whenever a view is removed. The host loop watches this to request a
+    /// full screen clear, because Terminal.Gui leaves a removed view's cells on screen.
+    let mutable disposals = 0
+
+    /// Detaches and disposes a node's backing view. Removal goes through the *actual*
+    /// <see cref="View.SuperView"/>, not the logical parent.
+    let private dispose (node: TerminalElement) =
+        let superView = node.element.SuperView
+
+        if not (isNull superView) then
+            superView.Remove node.element |> ignore
+            superView.SetNeedsDraw()
+
         node.element.RemoveAll()
         node.element.Dispose()
-#if DEBUG
-        System.Diagnostics.Debug.WriteLine($"{node.name} removed and disposed!")
-#endif
+        disposals <- disposals + 1
 
 
     /// Reconciles one node that is known to share a key with its previous incarnation.
@@ -44,7 +53,7 @@ module Differ =
             // Kind matches but the change can't be applied in place (e.g. an absolute
             // dimension became relative). Recreate the whole node.
             let parent = oldNode.element |> Interop.getParent
-            dispose parent oldNode
+            dispose oldNode
             initializeTree parent newNode
 
 
@@ -81,14 +90,14 @@ module Differ =
         olds
         |> List.iter (fun o ->
             if not (matched.Contains o) then
-                dispose (o.element |> Interop.getParent) o)
+                dispose o)
 
 
     /// Entry point: diff the previously rendered tree against the next one.
     let update (rootTree: TerminalElement) (newTree: TerminalElement) =
         if key rootTree <> key newTree then
             let parent = rootTree.element |> Interop.getParent
-            dispose parent rootTree
+            dispose rootTree
             initializeTree parent newTree
         else
             updateNode rootTree newTree

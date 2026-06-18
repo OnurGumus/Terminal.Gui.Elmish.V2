@@ -60,6 +60,8 @@ module prop =
             static member inline center = Interop.mkprop "y" (Pos.Center())
             static member inline percent(i: int) = Interop.mkprop "y" (Pos.Percent i)
             static member inline anchorEnd = Interop.mkprop "y" (Pos.AnchorEnd())
+            /// Anchor to the bottom, leaving `margin` rows below.
+            static member inline fromBottom(margin: int) = Interop.mkprop "y" (Pos.AnchorEnd margin)
 
 
     type width =
@@ -141,6 +143,8 @@ type textView =
     static member inline readOnly(value: bool) = Interop.mkprop "readOnly" value
     static member inline wordWrap(value: bool) = Interop.mkprop "wordWrap" value
     static member inline multiline(value: bool) = Interop.mkprop "multiline" value
+    /// For read-only views: scroll to the bottom whenever the text changes (e.g. a chat log).
+    static member inline scrollToEnd = Interop.mkprop "scrollToEnd" true
     static member inline onTextChanged(value: string -> unit) = Interop.mkprop "onTextChanged" value
 
 

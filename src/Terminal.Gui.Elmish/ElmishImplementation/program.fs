@@ -159,9 +159,24 @@ module Program =
                                 | nav -> nav.GetFocused() |> Option.ofObj
 
                             let nextTreeState = program.view state syncDispatch
+                            let disposalsBefore = Differ.disposals
                             Differ.update currentState nextTreeState
                             currentTreeState <- Some nextTreeState
-                            app.LayoutAndDraw false
+
+                            // If the structure changed (views were removed), the cells they
+                            // occupied linger — Terminal.Gui doesn't clear them on remove, and
+                            // ClearContents alone desyncs from the terminal. Emit a real clear
+                            // escape (as the resize handler does) and force a full repaint.
+                            if Differ.disposals <> disposalsBefore then
+                                app.Driver
+                                |> Option.ofObj
+                                |> Option.iter (fun d ->
+                                    d.WriteRaw "[2J[H"
+                                    d.ClearContents())
+
+                                app.LayoutAndDraw true
+                            else
+                                app.LayoutAndDraw false
 
                             // Safety net: if reconciliation/relayout moved focus, restore it.
                             try
