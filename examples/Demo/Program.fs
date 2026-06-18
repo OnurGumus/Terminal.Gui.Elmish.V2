@@ -18,6 +18,9 @@ type Page =
 type Model =
     { Page: Page
       Count: int
+      History: int list
+      Spinning: bool
+      Frame: int
       Name: string
       Subscribed: bool
       Theme: int
@@ -31,6 +34,8 @@ type Msg =
     | Increment
     | Decrement
     | Reset
+    | ToggleSpin
+    | SpinStep
     | NameChanged of string
     | SubscribedChanged of bool
     | ThemeChanged of int
@@ -42,9 +47,26 @@ type Msg =
 
 let fruits = [ "Apple"; "Banana"; "Cherry"; "Date"; "Elderberry" ]
 
+/// Keep the most recent 48 samples for the sparkline.
+let private pushHistory (c: int) (h: int list) =
+    let l = h @ [ c ]
+    List.skip (max 0 (List.length l - 48)) l
+
+/// Re-arm the auto-spin loop. Dispatch happens from a thread-pool thread, which the
+/// Elmish host marshals back onto the UI thread.
+let private spinCmd: Cmd<Msg> =
+    [ fun dispatch -> async {
+                          do! Async.Sleep 110
+                          dispatch SpinStep
+                      }
+                      |> Async.StartImmediate ]
+
 let init () : Model * Cmd<Msg> =
     { Page = Counter
       Count = 0
+      History = [ 0 ]
+      Spinning = false
+      Frame = 0
       Name = ""
       Subscribed = false
       Theme = 0
@@ -59,15 +81,28 @@ let init () : Model * Cmd<Msg> =
 let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
     match msg with
     | GoTo p -> { model with Page = p; LastAction = $"Opened {p}" }, Cmd.none
-    | Increment -> { model with Count = model.Count + 1; LastAction = "Incremented" }, Cmd.none
-    | Decrement -> { model with Count = model.Count - 1; LastAction = "Decremented" }, Cmd.none
-    | Reset -> { model with Count = 0; LastAction = "Reset" }, Cmd.none
+    | Increment ->
+        let c = model.Count + 1
+        { model with Count = c; History = pushHistory c model.History; LastAction = "Incremented" }, Cmd.none
+    | Decrement ->
+        let c = model.Count - 1
+        { model with Count = c; History = pushHistory c model.History; LastAction = "Decremented" }, Cmd.none
+    | Reset -> { model with Count = 0; History = pushHistory 0 model.History; LastAction = "Reset" }, Cmd.none
+    | ToggleSpin ->
+        let spinning = not model.Spinning
+        { model with Spinning = spinning; LastAction = (if spinning then "Spinning..." else "Stopped") }, (if spinning then spinCmd else Cmd.none)
+    | SpinStep ->
+        if model.Spinning then
+            let c = model.Count + 1
+            { model with Count = c; History = pushHistory c model.History }, spinCmd
+        else
+            model, Cmd.none
     | NameChanged n -> { model with Name = n }, Cmd.none
     | SubscribedChanged b -> { model with Subscribed = b; LastAction = (if b then "Subscribed" else "Unsubscribed") }, Cmd.none
     | ThemeChanged i -> { model with Theme = i; LastAction = "Theme changed" }, Cmd.none
     | FruitChanged f -> { model with Fruit = f; LastAction = $"Picked {f}" }, Cmd.none
     | ItemSelected i -> { model with Selected = i; LastAction = $"Selected {fruits.[i]}" }, Cmd.none
-    | Tick t -> { model with Clock = t }, Cmd.none
+    | Tick t -> { model with Clock = t; Frame = model.Frame + 1 }, Cmd.none
     | ShowAbout ->
         Dialogs.messageBox
             "About"
@@ -82,10 +117,36 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
 // ---------------------------------------------------------------- Subscriptions
 
 let clock dispatch =
-    let timer = new System.Timers.Timer(1000.0)
+    // Fast enough to animate the title spinner; the clock string only changes each second.
+    let timer = new System.Timers.Timer(150.0)
     timer.AutoReset <- true
     timer.Elapsed.Add(fun _ -> dispatch (Tick(DateTime.Now.ToString "HH:mm:ss")))
     timer.Start()
+
+/// Braille spinner frames + a unicode block sparkline of recent values.
+let spinnerFrames = [| "⠋"; "⠙"; "⠹"; "⠸"; "⠼"; "⠴"; "⠦"; "⠧"; "⠇"; "⠏" |]
+
+let spinner (model: Model) = spinnerFrames.[((model.Frame % spinnerFrames.Length) + spinnerFrames.Length) % spinnerFrames.Length]
+
+let sparkline (values: int list) =
+    match values with
+    | []
+    | [ _ ] -> ""
+    | _ ->
+        let blocks = "▁▂▃▄▅▆▇█"
+        let mn = List.min values
+        let mx = List.max values
+        let range = max 1 (mx - mn)
+        values
+        |> List.map (fun v -> blocks.[(v - mn) * (blocks.Length - 1) / range])
+        |> Array.ofSeq
+        |> System.String
+
+let themeColors theme =
+    match theme with
+    | 1 -> col "White", col "Black" // Dark
+    | 2 -> col "Black", col "Gray" // Slate
+    | _ -> col "White", col "BrightBlue" // Default (classic Terminal.Gui blue)
 
 // ---------------------------------------------------------------- Pages
 
@@ -95,6 +156,8 @@ let clock dispatch =
 let y0 = 4
 
 let counterPage model dispatch =
+    let _, bg = themeColors model.Theme
+
     [ View.label [ prop.id "lblCount"; prop.position.x.at 2; prop.position.y.at (y0 + 1); label.text "Counter value:" ]
 
       View.label [
@@ -116,7 +179,24 @@ let counterPage model dispatch =
 
       View.button [ prop.id "inc"; prop.position.x.at 2; prop.position.y.at (y0 + 5); button.text "Up"; button.onClick (fun () -> dispatch Increment) ]
       View.button [ prop.id "dec"; prop.position.x.at 12; prop.position.y.at (y0 + 5); button.text "Down"; button.onClick (fun () -> dispatch Decrement) ]
-      View.button [ prop.id "rst"; prop.position.x.at 24; prop.position.y.at (y0 + 5); button.text "Reset"; button.onClick (fun () -> dispatch Reset) ] ]
+      View.button [ prop.id "rst"; prop.position.x.at 24; prop.position.y.at (y0 + 5); button.text "Reset"; button.onClick (fun () -> dispatch Reset) ]
+
+      View.button [
+          prop.id "spin"
+          prop.position.x.at 36
+          prop.position.y.at (y0 + 5)
+          button.text (if model.Spinning then "Stop Spin" else "Auto Spin")
+          button.onClick (fun () -> dispatch ToggleSpin)
+      ]
+
+      View.label [ prop.id "lblHist"; prop.position.x.at 2; prop.position.y.at (y0 + 7); label.text "History:" ]
+      View.label [
+          prop.id "spark"
+          prop.position.x.at 11
+          prop.position.y.at (y0 + 7)
+          prop.color (col "BrightCyan", bg)
+          label.text (sparkline model.History)
+      ] ]
 
 let formPage model dispatch =
     [ View.label [ prop.id "lblName"; prop.position.x.at 2; prop.position.y.at (y0 + 1); label.text "Name:" ]
@@ -195,12 +275,6 @@ let listsPage model dispatch =
 
 // ---------------------------------------------------------------- View
 
-let themeColors theme =
-    match theme with
-    | 1 -> col "White", col "Black" // Dark
-    | 2 -> col "Black", col "Gray" // Slate
-    | _ -> col "White", col "BrightBlue" // Default (classic Terminal.Gui blue)
-
 /// A page-nav button. The active page is highlighted with an inverted colour scheme
 /// (the Button already draws its own `[ ]`, so don't add brackets here).
 let navButton (model: Model) dispatch (page: Page) (text: string) (x: int) =
@@ -239,7 +313,7 @@ let view (model: Model) (dispatch: Msg -> unit) =
                 prop.width.filled
                 prop.height.fill 1
                 prop.color (fg, bg)
-                window.title $"  Terminal.Gui.Elmish Demo  -  {model.Clock}  "
+                window.title $"  {spinner model}  Terminal.Gui.Elmish Demo  -  {model.Clock}  "
                 window.children (
                     [ navButton model dispatch Counter "Counter" 2
                       navButton model dispatch Form "Form" 17
