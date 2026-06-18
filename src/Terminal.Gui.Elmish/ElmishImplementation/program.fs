@@ -127,15 +127,53 @@ module Program =
         let (model, cmd) = program.init arg
         let rb = RingBuffer 10
         let mutable reentered = false
+        let mutable pendingRender = false
         let mutable state = model
         let mutable currentTreeState: TerminalElement option = None
 
         let isUiThread () =
             app.MainThreadId.HasValue && app.MainThreadId.Value = Environment.CurrentManagedThreadId
 
-        // The actual MVU step. Always runs on the UI thread (see `syncDispatch`), so the
-        // tree reconciliation stays synchronous with the `currentTreeState` bookkeeping.
-        let rec dispatch msg =
+        // Schedules a single, coalesced reconcile on the next main-loop iteration. The render
+        // is built from the LATEST `state` at execution time (not captured at dispatch time),
+        // so it never writes a stale value back into a view the user is editing — by the time
+        // it runs, the model and the focused field already agree, so the write is a no-op.
+        // Deferring also keeps the reconcile out of the in-flight key/mouse event handler,
+        // which otherwise makes v2 re-resolve focus and kick the user out of the field.
+        let rec scheduleRender () =
+            if pendingRender then
+                ()
+            else
+                pendingRender <- true
+
+                app.Invoke (
+                    System.Action (fun () ->
+                        pendingRender <- false
+
+                        match currentTreeState with
+                        | None -> ()
+                        | Some currentState ->
+                            let focused =
+                                match app.Navigation with
+                                | null -> None
+                                | nav -> nav.GetFocused() |> Option.ofObj
+
+                            let nextTreeState = program.view state syncDispatch
+                            Differ.update currentState nextTreeState
+                            currentTreeState <- Some nextTreeState
+                            app.LayoutAndDraw false
+
+                            // Safety net: if reconciliation/relayout moved focus, restore it.
+                            try
+                                match focused with
+                                | Some v when not (isNull v.SuperView) && not v.HasFocus -> v.SetFocus() |> ignore
+                                | _ -> ()
+                            with _ -> ())
+                )
+
+        // The MVU step. Model updates run synchronously (so chained commands see fresh state);
+        // the view reconcile is coalesced and deferred via `scheduleRender`.
+        and dispatch msg =
             if reentered then
                 rb.Push msg
             else
@@ -148,38 +186,7 @@ module Program =
                     try
                         let (model', cmd') = program.update msg state
                         state <- model'
-
-                        match currentTreeState with
-                        | None -> ()
-                        | Some currentState ->
-                            let nextTreeState = program.view model' syncDispatch
-                            // Advance the bookkeeping synchronously (so chained dispatches diff
-                            // against the right baseline), but defer the actual view mutation and
-                            // redraw to the next main-loop iteration. Reconciling inside a
-                            // Terminal.Gui event handler (e.g. a key press) makes v2 re-resolve
-                            // focus and would kick the user out of the focused view.
-                            currentTreeState <- Some nextTreeState
-
-                            app.Invoke (
-                                System.Action (fun () ->
-                                    // Capture focus before mutating the tree, and restore it after,
-                                    // so reconciliation/relayout never steals focus from the user
-                                    // (e.g. typing into a TextField that triggers a re-render).
-                                    let focused =
-                                        match app.Navigation with
-                                        | null -> None
-                                        | nav -> nav.GetFocused() |> Option.ofObj
-
-                                    Differ.update currentState nextTreeState
-                                    app.LayoutAndDraw false
-
-                                    try
-                                        match focused with
-                                        | Some v when not (isNull v.SuperView) && not v.HasFocus -> v.SetFocus() |> ignore
-                                        | _ -> ()
-                                    with _ -> ())
-                            )
-
+                        scheduleRender ()
                         cmd' |> Cmd.exec syncDispatch
                     with ex ->
                         program.onError (sprintf "Unable to process the message: %A" msg, ex)
