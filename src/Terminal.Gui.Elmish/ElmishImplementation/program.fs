@@ -147,17 +147,40 @@ module Program =
 
                     try
                         let (model', cmd') = program.update msg state
+                        state <- model'
 
                         match currentTreeState with
                         | None -> ()
                         | Some currentState ->
                             let nextTreeState = program.view model' syncDispatch
-                            Differ.update currentState nextTreeState
+                            // Advance the bookkeeping synchronously (so chained dispatches diff
+                            // against the right baseline), but defer the actual view mutation and
+                            // redraw to the next main-loop iteration. Reconciling inside a
+                            // Terminal.Gui event handler (e.g. a key press) makes v2 re-resolve
+                            // focus and would kick the user out of the focused view.
                             currentTreeState <- Some nextTreeState
-                            app.LayoutAndDraw false
+
+                            app.Invoke (
+                                System.Action (fun () ->
+                                    // Capture focus before mutating the tree, and restore it after,
+                                    // so reconciliation/relayout never steals focus from the user
+                                    // (e.g. typing into a TextField that triggers a re-render).
+                                    let focused =
+                                        match app.Navigation with
+                                        | null -> None
+                                        | nav -> nav.GetFocused() |> Option.ofObj
+
+                                    Differ.update currentState nextTreeState
+                                    app.LayoutAndDraw false
+
+                                    try
+                                        match focused with
+                                        | Some v when not (isNull v.SuperView) && not v.HasFocus -> v.SetFocus() |> ignore
+                                        | _ -> ()
+                                    with _ -> ())
+                            )
 
                         cmd' |> Cmd.exec syncDispatch
-                        state <- model'
                     with ex ->
                         program.onError (sprintf "Unable to process the message: %A" msg, ex)
 
