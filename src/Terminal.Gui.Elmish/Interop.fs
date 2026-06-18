@@ -158,3 +158,10 @@ module Interop =
 module internal Checker =
 
     let textChanged (element: View) (text: string) = element.Text <> text
+
+    /// Writes a model-provided value into an editable text view, but never while it has
+    /// focus: during editing the field is the source of truth (kept in sync via its change
+    /// event), so writing back the model value would fight the user and reset the cursor.
+    let setEditableText (element: View) (text: string) =
+        if element.Text <> text && not element.HasFocus then
+            element.Text <- text

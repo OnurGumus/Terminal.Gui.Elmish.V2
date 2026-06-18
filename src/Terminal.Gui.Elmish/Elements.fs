@@ -360,9 +360,7 @@ type TextFieldElement(props: IProperty list) =
     inherit TerminalElement(props)
 
     let setProps (element: TextField) props =
-        props
-        |> Interop.getValue<string> "text"
-        |> Option.iter (fun v -> if Checker.textChanged element v then element.Text <- v)
+        props |> Interop.getValue<string> "text" |> Option.iter (fun v -> Checker.setEditableText element v)
 
         props |> Interop.getValue<bool> "readOnly" |> Option.iter (fun v -> element.ReadOnly <- v)
         props |> Interop.getValue<bool> "secret" |> Option.iter (fun v -> element.Secret <- v)
@@ -410,9 +408,7 @@ type TextViewElement(props: IProperty list) =
     inherit TerminalElement(props)
 
     let setProps (element: TextView) props =
-        props
-        |> Interop.getValue<string> "text"
-        |> Option.iter (fun v -> if Checker.textChanged element v then element.Text <- v)
+        props |> Interop.getValue<string> "text" |> Option.iter (fun v -> Checker.setEditableText element v)
 
         props |> Interop.getValue<bool> "readOnly" |> Option.iter (fun v -> element.ReadOnly <- v)
         props |> Interop.getValue<bool> "wordWrap" |> Option.iter (fun v -> element.WordWrap <- v)
@@ -621,7 +617,7 @@ type DropDownListElement(props: IProperty list) =
         |> Interop.getValue<string list> "source"
         |> Option.iter (fun items -> element.Source <- ListWrapper<string>(ObservableCollection<string>(items)))
 
-        props |> Interop.getValue<string> "text" |> Option.iter (fun v -> if Checker.textChanged element v then element.Text <- v)
+        props |> Interop.getValue<string> "text" |> Option.iter (fun v -> Checker.setEditableText element v)
         props |> Interop.getValue<bool> "readonly" |> Option.iter (fun v -> element.ReadOnly <- v)
 
         props
@@ -751,7 +747,7 @@ type TextValidateFieldElement(props: IProperty list) =
 
     let setProps (element: TextValidateField) props =
         props |> Interop.getValue<ITextValidateProvider> "provider" |> Option.iter (fun v -> element.Provider <- v)
-        props |> Interop.getValue<string> "text" |> Option.iter (fun v -> if Checker.textChanged element v then element.Text <- v)
+        props |> Interop.getValue<string> "text" |> Option.iter (fun v -> Checker.setEditableText element v)
 
     override _.name = "TextValidateField"
 
