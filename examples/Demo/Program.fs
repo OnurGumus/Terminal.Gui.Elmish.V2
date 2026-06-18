@@ -154,7 +154,7 @@ let formPage model dispatch =
           prop.id "theme"
           prop.position.x.at 11
           prop.position.y.at (y0 + 7)
-          radioGroup.radioLabels [ "Default"; "Dark"; "Ocean" ]
+          radioGroup.radioLabels [ "Default"; "Dark"; "Slate" ]
           radioGroup.selectedItem model.Theme
           radioGroup.onSelectedItemChanged (ThemeChanged >> dispatch)
       ]
@@ -197,19 +197,23 @@ let listsPage model dispatch =
 
 let themeColors theme =
     match theme with
-    | 1 -> col "White", col "Black"
-    | 2 -> col "BrightYellow", col "Blue"
-    | _ -> col "Black", col "Gray"
+    | 1 -> col "White", col "Black" // Dark
+    | 2 -> col "Black", col "Gray" // Slate
+    | _ -> col "White", col "BrightBlue" // Default (classic Terminal.Gui blue)
 
-/// A page-nav button that highlights the active page.
+/// A page-nav button. The active page is highlighted with an inverted colour scheme
+/// (the Button already draws its own `[ ]`, so don't add brackets here).
 let navButton (model: Model) dispatch (page: Page) (text: string) (x: int) =
-    View.button [
-        prop.id $"nav{page}"
-        prop.position.x.at x
-        prop.position.y.at 0
-        button.text (if model.Page = page then $"[ {text} ]" else $"  {text}  ")
-        button.onClick (fun () -> dispatch (GoTo page))
-    ]
+    let active = model.Page = page
+
+    View.button (
+        [ prop.id $"nav{page}"
+          prop.position.x.at x
+          prop.position.y.at 0
+          button.text text
+          button.onClick (fun () -> dispatch (GoTo page)) ]
+        @ (if active then [ prop.color (col "Black", col "BrightYellow") ] else [])
+    )
 
 let view (model: Model) (dispatch: Msg -> unit) =
     let fg, bg = themeColors model.Theme
@@ -237,9 +241,9 @@ let view (model: Model) (dispatch: Msg -> unit) =
                 prop.color (fg, bg)
                 window.title $"  Terminal.Gui.Elmish Demo  -  {model.Clock}  "
                 window.children (
-                    [ navButton model dispatch Counter "Counter" 1
-                      navButton model dispatch Form "Form" 14
-                      navButton model dispatch Lists "Lists" 24
+                    [ navButton model dispatch Counter "Counter" 2
+                      navButton model dispatch Form "Form" 17
+                      navButton model dispatch Lists "Lists" 29
 
                       View.lineView [ prop.id "navrule"; prop.position.x.at 0; prop.position.y.at 2; prop.width.filled; lineView.horizontal ]
 
