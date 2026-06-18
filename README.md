@@ -13,6 +13,7 @@ rewritten against the v2 API; the consumer-facing DSL (`View.label [...]`, `prop
 dotnet build src/Terminal.Gui.Elmish/Terminal.Gui.Elmish.fsproj
 dotnet run --project examples/Counter
 dotnet run --project examples/Showcase
+dotnet run --project examples/Demo      # full-featured: menus, tabs, form, lists, live clock, dialog
 ```
 
 ```fsharp
