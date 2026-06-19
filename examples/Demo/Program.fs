@@ -338,7 +338,6 @@ let chatPage model dispatch =
           textView.readOnly true
           textView.multiline true
           textView.wordWrap true
-          textView.scrollToEnd
           textView.text model.ChatLog
       ]
 
