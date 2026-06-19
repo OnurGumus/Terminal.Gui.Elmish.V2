@@ -6,10 +6,14 @@
     <AssemblyName>Terminal.Gui.Elmish</AssemblyName>
     <OutputType>Library</OutputType>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <Nullable>enable</Nullable>
+    <!-- F# nullness checking adds only noise over Terminal.Gui's C# nullable refs;
+         this interop layer guards null at runtime (isNull / Option.ofObj). -->
+    <Nullable>disable</Nullable>
     <WarningLevel>3</WarningLevel>
-    <!-- F# wrappers intentionally shadow some Terminal.Gui names; keep noise down. -->
-    <NoWarn>$(NoWarn);FS0064;FS3370</NoWarn>
+    <!-- FS0064/FS3370: intentional name shadowing. FS0044: TextView is deprecated in v2
+         (superseded by EditorView) but we deliberately bind it. FS0760: 'new' for
+         IDisposable is stylistic for these short-lived widgets. -->
+    <NoWarn>$(NoWarn);FS0064;FS3370;FS0044;FS0760</NoWarn>
 
     <PackageId>Terminal.Gui.Elmish</PackageId>
     <Authors>Daniel Hardt; Terminal.Gui.Elmish contributors</Authors>

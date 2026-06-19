@@ -39,7 +39,7 @@ module Differ =
             superView.Remove node.element |> ignore
             superView.SetNeedsDraw()
 
-        node.element.RemoveAll()
+        node.element.RemoveAll() |> ignore
         node.element.Dispose()
         disposals <- disposals + 1
 
