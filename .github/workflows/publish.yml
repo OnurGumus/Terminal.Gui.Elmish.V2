@@ -41,13 +41,17 @@ jobs:
           name: nupkg
           path: ${{ github.workspace }}/artifacts/*.nupkg
 
+      # Publishing steps run only once NUGET_USER is set (and a Trusted Publishing policy
+      # exists on NuGet.org). Until then the workflow still succeeds with the artifact above.
       - name: NuGet login (Trusted Publishing / OIDC)
         id: nuget-login
+        if: ${{ vars.NUGET_USER != '' }}
         uses: NuGet/login@v1
         with:
           user: ${{ vars.NUGET_USER }}
 
       - name: Push to NuGet.org
+        if: ${{ vars.NUGET_USER != '' }}
         run: >
           dotnet nuget push ${{ github.workspace }}/artifacts/*.nupkg
           --api-key ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
