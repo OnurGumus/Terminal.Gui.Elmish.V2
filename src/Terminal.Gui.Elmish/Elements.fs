@@ -425,6 +425,10 @@ type TextViewElement(props: IProperty list) =
 
                     if scrollToEnd then
                         element.MoveEnd() |> ignore
+
+                    // Setting a read-only TextView's Text doesn't reliably mark it dirty, so
+                    // force a redraw — otherwise model updates (e.g. a chat log) never show.
+                    element.SetNeedsDraw()
             else
                 Checker.setEditableText element v)
 
