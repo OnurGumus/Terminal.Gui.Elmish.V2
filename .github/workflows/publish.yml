@@ -1,0 +1,55 @@
+name: Build & Publish (NuGet)
+
+# Builds Terminal.Gui from the pinned submodule, packs the self-contained wrapper, and
+# publishes it to NuGet.org on every push to master using Trusted Publishing (OIDC) -
+# no long-lived API key. Configure a trusted-publisher policy on NuGet.org first (see README).
+
+on:
+  push:
+    branches: [ master ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write   # required for NuGet Trusted Publishing (OIDC)
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0   # full history so Terminal.Gui's GitVersion can resolve
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Pack (builds Terminal.Gui submodule + bundles it)
+        run: >
+          dotnet pack src/Terminal.Gui.Elmish/Terminal.Gui.Elmish.fsproj
+          -c Release
+          -p:Version=2.0.0-ci.${{ github.run_number }}
+          -o ${{ github.workspace }}/artifacts
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nupkg
+          path: ${{ github.workspace }}/artifacts/*.nupkg
+
+      - name: NuGet login (Trusted Publishing / OIDC)
+        id: nuget-login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ vars.NUGET_USER }}
+
+      - name: Push to NuGet.org
+        run: >
+          dotnet nuget push ${{ github.workspace }}/artifacts/*.nupkg
+          --api-key ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
+          --source https://api.nuget.org/v3/index.json
+          --skip-duplicate

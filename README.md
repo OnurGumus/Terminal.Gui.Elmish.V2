@@ -10,7 +10,13 @@ was rewritten against the v2 API; the consumer-facing DSL (`View.label [...]`, `
 
 ## Quick start
 
+This repo references Terminal.Gui v2 as a **git submodule** (the namespace-refactored
+`develop` branch isn't on NuGet yet), so clone recursively:
+
 ```bash
+git clone --recurse-submodules https://github.com/OnurGumus/Terminal.Gui.Elmish.V2
+# already cloned? -> git submodule update --init --recursive
+
 dotnet build src/Terminal.Gui.Elmish/Terminal.Gui.Elmish.fsproj
 dotnet run --project examples/Counter
 dotnet run --project examples/Showcase
@@ -92,6 +98,29 @@ Core, all v1 widgets (mapped/modernized), the keyed diff, and the run loop are p
 build clean against the local Terminal.Gui v2 (`net10.0`). The `Counter`, `Showcase`, and
 `Demo` examples are verified rendering and interacting. `GraphView` and `Wizard` expose a
 `prop.ref` escape hatch for their richer imperative APIs.
+
+## NuGet package & CI
+
+The package id is **`OnurGumus.Terminal.Gui.Elmish`** (the original `Terminal.Gui.Elmish`
+belongs to Daniel Hardt). Because Terminal.Gui v2 with the current namespaces isn't published,
+the package is **self-contained**: `Terminal.Gui.dll` is bundled into `lib/`, and Terminal.Gui's
+own runtime dependencies (Markdig, TextMateSharp, etc.) are declared as normal package
+dependencies. Consumers just `dotnet add package OnurGumus.Terminal.Gui.Elmish` — no extra feed.
+
+`.github/workflows/publish.yml` builds Terminal.Gui from the submodule, packs the wrapper as
+`2.0.0-ci.<run-number>`, and publishes to NuGet.org on every push to `master` via
+**Trusted Publishing (OIDC)** — no API key stored.
+
+To enable publishing (one-time, on NuGet.org):
+
+1. Sign in to NuGet.org → your account → **Trusted Publishing** → add a policy:
+   - Repository owner: `OnurGumus`, repository: `Terminal.Gui.Elmish.V2`
+   - Workflow file: `publish.yml`
+   - Package: `OnurGumus.Terminal.Gui.Elmish` (a new-package/glob policy works for the first push)
+2. In the GitHub repo → Settings → Secrets and variables → Actions → **Variables**, add
+   `NUGET_USER` = your NuGet.org username.
+
+Until then the workflow still builds, packs, and uploads the `.nupkg` as a build artifact.
 
 ## Credits
 

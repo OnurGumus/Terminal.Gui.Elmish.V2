@@ -12,6 +12,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Terminal.Gui.Elmish\Terminal.Gui.Elmish.fsproj" />
+    <!-- The wrapper bundles Terminal.Gui privately (PrivateAssets=all), so reference it
+         directly here so the example compiles/runs against its types. -->
+    <ProjectReference Include="..\..\external\Terminal.Gui\Terminal.Gui\Terminal.Gui.csproj" />
   </ItemGroup>
 
 </Project>

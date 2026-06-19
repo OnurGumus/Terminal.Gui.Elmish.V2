@@ -15,7 +15,7 @@
          IDisposable is stylistic for these short-lived widgets. -->
     <NoWarn>$(NoWarn);FS0064;FS3370;FS0044;FS0760</NoWarn>
 
-    <PackageId>Terminal.Gui.Elmish</PackageId>
+    <PackageId>OnurGumus.Terminal.Gui.Elmish</PackageId>
     <Authors>Daniel Hardt; Terminal.Gui.Elmish contributors</Authors>
     <Description>An Elmish (MVU) wrapper around Terminal.Gui v2 with a Feliz-like view DSL for F#. A v2 port of Daniel Hardt's Terminal.Gui.Elmish.</Description>
     <PackageTags>fsharp;f#;gui;console;tui;ui;elmish;feliz;terminal</PackageTags>
@@ -37,8 +37,38 @@
     <Compile Include="ElmishImplementation/program.fs" />
   </ItemGroup>
 
+  <!-- Terminal.Gui v2 (the namespace-refactored develop branch) isn't published on NuGet
+       yet, so the unpublished Terminal.Gui.dll is bundled into this package's lib/ folder.
+       PrivateAssets=all stops it leaking as an (unresolvable) package dependency. -->
   <ItemGroup>
-    <ProjectReference Include="..\..\..\Terminal.Gui\Terminal.Gui\Terminal.Gui.csproj" />
+    <ProjectReference Include="..\..\external\Terminal.Gui\Terminal.Gui\Terminal.Gui.csproj" PrivateAssets="all" />
   </ItemGroup>
+
+  <!-- Terminal.Gui's own runtime dependencies ARE on NuGet, so declare them normally so the
+       bundled Terminal.Gui.dll can resolve them at the consumer. (Versions match the pinned
+       Terminal.Gui submodule.) -->
+  <ItemGroup>
+    <PackageReference Include="ColorHelper" Version="1.8.1" />
+    <PackageReference Include="JetBrains.Annotations" Version="2026.2.0" />
+    <PackageReference Include="Markdig" Version="1.3.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.7" />
+    <PackageReference Include="System.IO.Abstractions" Version="22.1.1" />
+    <PackageReference Include="TextMateSharp" Version="2.0.4" />
+    <PackageReference Include="TextMateSharp.Grammars" Version="2.0.4" />
+    <PackageReference Include="Wcwidth" Version="4.0.1" />
+  </ItemGroup>
+
+  <!-- Bundle the project-reference DLL (Terminal.Gui.dll) into lib/. Package-sourced DLLs
+       have a NuGetPackageId and are declared as dependencies above, so they're excluded. -->
+  <PropertyGroup>
+    <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);BundleProjectReferenceDlls</TargetsForTfmSpecificBuildOutput>
+  </PropertyGroup>
+
+  <Target Name="BundleProjectReferenceDlls" DependsOnTargets="ResolveReferences">
+    <ItemGroup>
+      <BuildOutputInPackage Include="@(ReferenceCopyLocalPaths)"
+                            Condition="'%(ReferenceCopyLocalPaths.Extension)' == '.dll' and '%(ReferenceCopyLocalPaths.NuGetPackageId)' == ''" />
+    </ItemGroup>
+  </Target>
 
 </Project>
