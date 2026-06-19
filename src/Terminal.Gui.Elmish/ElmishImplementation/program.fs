@@ -153,7 +153,9 @@ module Program =
                         match currentTreeState with
                         | None -> ()
                         | Some currentState ->
-                            let focused =
+                            // Only focus held before a *structural* change can be disturbed;
+                            // capturing/restoring it on every keystroke is wasted work (latency).
+                            let focusedBefore =
                                 match app.Navigation with
                                 | null -> None
                                 | nav -> nav.GetFocused() |> Option.ofObj
@@ -175,15 +177,15 @@ module Program =
                                     d.ClearContents())
 
                                 app.LayoutAndDraw true
-                            else
-                                app.LayoutAndDraw false
 
-                            // Safety net: if reconciliation/relayout moved focus, restore it.
-                            try
-                                match focused with
-                                | Some v when not (isNull v.SuperView) && not v.HasFocus -> v.SetFocus() |> ignore
-                                | _ -> ()
-                            with _ -> ())
+                                // Restore focus if the structural change moved it.
+                                try
+                                    match focusedBefore with
+                                    | Some v when not (isNull v.SuperView) && not v.HasFocus -> v.SetFocus() |> ignore
+                                    | _ -> ()
+                                with _ -> ()
+                            else
+                                app.LayoutAndDraw false)
                 )
 
         // The MVU step. Model updates run synchronously (so chained commands see fresh state);

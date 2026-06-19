@@ -104,7 +104,7 @@ let init () : Model * Cmd<Msg> =
       Theme = 0
       Fruit = "Apple"
       Selected = 0
-      ChatLog = "Claude: Hi! Ask me anything. (This is a canned, offline demo.)\n"
+      ChatLog = "Claude: Hi! I'm a canned, offline demo assistant.\nType a message below and press Send to see a streamed reply.\n"
       ChatInput = ""
       Pending = ""
       Clock = DateTime.Now.ToString "HH:mm:ss"
@@ -335,6 +335,7 @@ let chatPage model dispatch =
           prop.width.fill 2
           prop.height.fill 3
           textView.readOnly true
+          textView.multiline true
           textView.wordWrap true
           textView.scrollToEnd
           textView.text model.ChatLog
