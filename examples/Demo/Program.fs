@@ -73,14 +73,6 @@ let private spinCmd: Cmd<Msg> =
                       }
                       |> Async.StartImmediate ]
 
-/// Re-arm the chat "typewriter" stream (one character per tick).
-let private streamCmd: Cmd<Msg> =
-    [ fun dispatch -> async {
-                          do! Async.Sleep 12
-                          dispatch StreamTick
-                      }
-                      |> Async.StartImmediate ]
-
 /// A canned, offline "assistant" reply so the demo needs no network.
 let cannedReply (prompt: string) =
     let p = prompt.ToLowerInvariant()
@@ -92,7 +84,7 @@ let cannedReply (prompt: string) =
     elif p.Contains "?" then
         "Great question! In this demo I only have a few scripted answers - but the streaming, scrolling, and input are all real."
     else
-        $"You said: \"{prompt}\". I'm streaming this reply one character at a time over an async Cmd, marshaled back onto the UI thread."
+        $"You said: \"{prompt}\". This whole UI - chat included - is an Elmish (Model-View-Update) program rendered with Terminal.Gui.Elmish."
 
 let init () : Model * Cmd<Msg> =
     { Page = Counter
@@ -105,7 +97,7 @@ let init () : Model * Cmd<Msg> =
       Theme = 0
       Fruit = "Apple"
       Selected = 0
-      ChatLog = "Claude: Hi! I'm a canned, offline demo assistant.\nType a message below and press Enter (or Send) for a streamed reply.\n"
+      ChatLog = "Claude: Hi! I'm a canned, offline demo assistant.\nType a message below and press Enter (or Send) for a reply.\n"
       ChatInput = ""
       Pending = ""
       Clock = DateTime.Now.ToString "HH:mm:ss"
@@ -145,13 +137,9 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
         if text = "" then
             model, Cmd.none
         else
-            let log = model.ChatLog + $"\nYou: {text}\n\nClaude: "
-            { model with ChatLog = log; ChatInput = ""; Pending = cannedReply text; LastAction = "Sent message" }, streamCmd
-    | StreamTick ->
-        match model.Pending with
-        | "" -> model, Cmd.none
-        | pending ->
-            { model with ChatLog = model.ChatLog + string pending.[0]; Pending = pending.[1..] }, streamCmd
+            let log = model.ChatLog + $"\nYou: {text}\n\nClaude: {cannedReply text}\n"
+            { model with ChatLog = log; ChatInput = ""; LastAction = "Sent message" }, Cmd.none
+    | StreamTick -> model, Cmd.none
     | ConfirmReset ->
         match Dialogs.messageBox "Confirm" "Reset the counter to zero?" [ "Yes"; "No" ] with
         | "Yes" -> { model with Count = 0; History = pushHistory 0 model.History; LastAction = "Reset (confirmed)" }, Cmd.none
@@ -171,8 +159,9 @@ let update (msg: Msg) (model: Model) : Model * Cmd<Msg> =
 // ---------------------------------------------------------------- Subscriptions
 
 let clock dispatch =
-    // Fast enough to animate the title spinner; the clock string only changes each second.
-    let timer = new System.Timers.Timer(150.0)
+    // Tick once a second: enough for the clock, and infrequent enough that the background
+    // repaint doesn't keep resetting the text cursor's blink while you type.
+    let timer = new System.Timers.Timer(1000.0)
     timer.AutoReset <- true
     timer.Elapsed.Add(fun _ -> dispatch (Tick(DateTime.Now.ToString "HH:mm:ss")))
     timer.Start()
