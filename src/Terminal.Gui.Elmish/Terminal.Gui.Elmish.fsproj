@@ -13,9 +13,10 @@
 
     <PackageId>Terminal.Gui.Elmish</PackageId>
     <Authors>Daniel Hardt; Terminal.Gui.Elmish contributors</Authors>
-    <Description>An Elmish (MVU) wrapper around Terminal.Gui v2 with a Feliz-like view DSL for F#.</Description>
+    <Description>An Elmish (MVU) wrapper around Terminal.Gui v2 with a Feliz-like view DSL for F#. A v2 port of Daniel Hardt's Terminal.Gui.Elmish.</Description>
     <PackageTags>fsharp;f#;gui;console;tui;ui;elmish;feliz;terminal</PackageTags>
-    <PackageProjectUrl>https://github.com/DieselMeister/Terminal.Gui.Elmish</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/OnurGumus/Terminal.Gui.Elmish.V2</PackageProjectUrl>
+    <PackageLicenseExpression>Unlicense</PackageLicenseExpression>
     <RepositoryType>git</RepositoryType>
   </PropertyGroup>
 

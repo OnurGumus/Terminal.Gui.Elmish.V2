@@ -3,8 +3,9 @@
 An [Elmish](https://elmish.github.io/) (Model-View-Update) wrapper around
 **[Terminal.Gui](https://github.com/gui-cs/Terminal.Gui) v2** with a Feliz-like view DSL for F#.
 
-This is a port of the original v1 wrapper to Terminal.Gui v2. The binding layer was
-rewritten against the v2 API; the consumer-facing DSL (`View.label [...]`, `prop.*`,
+This is a **fork/port** of [**DieselMeister/Terminal.Gui.Elmish**](https://github.com/DieselMeister/Terminal.Gui.Elmish)
+by **Daniel Hardt** — the original v1 wrapper — updated to Terminal.Gui v2. The binding layer
+was rewritten against the v2 API; the consumer-facing DSL (`View.label [...]`, `prop.*`,
 `Program.run`) is preserved where possible and modernized where v2 forced a change.
 
 ## Quick start
@@ -88,6 +89,23 @@ size and needs no ANSI-query handshake) when driving an app from a script/PTY fo
 ## Status
 
 Core, all v1 widgets (mapped/modernized), the keyed diff, and the run loop are ported and
-build clean against the local Terminal.Gui v2 (`net10.0`). The `Counter` and `Showcase`
-examples are verified rendering and interacting. `GraphView` and `Wizard` expose a
+build clean against the local Terminal.Gui v2 (`net10.0`). The `Counter`, `Showcase`, and
+`Demo` examples are verified rendering and interacting. `GraphView` and `Wizard` expose a
 `prop.ref` escape hatch for their richer imperative APIs.
+
+## Credits
+
+- **Original project:** [DieselMeister/Terminal.Gui.Elmish](https://github.com/DieselMeister/Terminal.Gui.Elmish)
+  by **Daniel Hardt** — the Elmish wrapper and the Feliz-like DSL this repo is built on.
+- **Terminal.Gui:** the [gui-cs/Terminal.Gui](https://github.com/gui-cs/Terminal.Gui) team —
+  the underlying cross-platform TUI toolkit.
+- **Elmish:** the [Elmish](https://github.com/elmish/elmish) project — the MVU core
+  (`Cmd`, `Program`, `RingBuffer`) is adapted from it, as in the original wrapper.
+
+This v2 port reuses the original's architecture and public API; the binding layer and host
+loop were rewritten for Terminal.Gui v2.
+
+## License
+
+Released into the public domain under [The Unlicense](LICENSE.txt), the same license as the
+original project. No warranty. See `LICENSE.txt` for details.
