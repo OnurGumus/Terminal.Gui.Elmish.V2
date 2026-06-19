@@ -335,8 +335,10 @@ let chatPage model dispatch =
           prop.position.y.at (y0 + 1)
           prop.width.fill 2
           prop.height.fill 3
-          prop.color (col "White", col "Black")
-          textView.readOnly true
+          // Editable + non-focusable instead of read-only: read-only TextView draws its
+          // text gray-on-gray (invisible). This uses the visible Editable role; CanFocus=false
+          // keeps the user from actually editing it.
+          prop.canFocus false
           textView.multiline true
           textView.wordWrap true
           textView.text model.ChatLog
@@ -348,7 +350,6 @@ let chatPage model dispatch =
           prop.position.x.at 7
           prop.position.y.fromBottom 2
           prop.width.fill 12
-          prop.color (col "White", col "Black")
           textField.text model.ChatInput
           textField.onTextChanged (ChatInputChanged >> dispatch)
           prop.onKeyDown (fun k -> if k.KeyCode = Key.Enter.KeyCode then dispatch SendChat)
