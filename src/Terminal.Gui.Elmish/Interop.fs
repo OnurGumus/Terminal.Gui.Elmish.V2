@@ -159,9 +159,11 @@ module internal Checker =
 
     let textChanged (element: View) (text: string) = element.Text <> text
 
-    /// Writes a model-provided value into an editable text view, but never while it has
-    /// focus: during editing the field is the source of truth (kept in sync via its change
-    /// event), so writing back the model value would fight the user and reset the cursor.
+    /// Writes a model-provided value into an editable text view only when it actually
+    /// differs. While the user types, the coalesced render always rebuilds from the latest
+    /// model (kept in sync via the change event), so the value already matches and this is
+    /// a no-op — no cursor fighting. When the model changes the text programmatically
+    /// (e.g. clearing an input after submit), the values differ and the write applies.
     let setEditableText (element: View) (text: string) =
-        if element.Text <> text && not element.HasFocus then
+        if element.Text <> text then
             element.Text <- text

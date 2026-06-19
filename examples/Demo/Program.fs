@@ -4,6 +4,7 @@ open System
 open Terminal.Gui.Elmish
 open Terminal.Gui.Drawing
 open Terminal.Gui.ViewBase
+open Terminal.Gui.Input
 open Terminal.Gui.Elmish.Elements
 
 /// Build a Color from a Terminal.Gui v2 named color (avoids the inref ctor overload).
@@ -104,7 +105,7 @@ let init () : Model * Cmd<Msg> =
       Theme = 0
       Fruit = "Apple"
       Selected = 0
-      ChatLog = "Claude: Hi! I'm a canned, offline demo assistant.\nType a message below and press Send to see a streamed reply.\n"
+      ChatLog = "Claude: Hi! I'm a canned, offline demo assistant.\nType a message below and press Enter (or Send) for a streamed reply.\n"
       ChatInput = ""
       Pending = ""
       Clock = DateTime.Now.ToString "HH:mm:ss"
@@ -349,6 +350,7 @@ let chatPage model dispatch =
           prop.width.fill 12
           textField.text model.ChatInput
           textField.onTextChanged (ChatInputChanged >> dispatch)
+          prop.onKeyDown (fun k -> if k.KeyCode = Key.Enter.KeyCode then dispatch SendChat)
       ]
       View.button [ prop.id "send"; prop.position.x.anchorEnd; prop.position.y.fromBottom 2; button.text "Send"; button.onClick (fun () -> dispatch SendChat) ] ]
 
@@ -496,6 +498,9 @@ let main _ =
     match Environment.GetEnvironmentVariable "TGE_FORCE_DRIVER" with
     | null | "" -> ()
     | driver -> Terminal.Gui.App.Application.ForceDriver <- driver
+
+    // Poll/redraw faster than the default 25/sec so typing feels responsive.
+    Terminal.Gui.App.Application.MaximumIterationsPerSecond <- 120us
 
     Program.mkProgram init update view
     |> Program.withSubscription (fun _ -> Cmd.ofSub clock)
