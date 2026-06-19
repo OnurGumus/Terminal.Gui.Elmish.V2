@@ -23,6 +23,13 @@ module ElmishApp =
 /// fragile reflection-based delegate field poking used in the v1 wrapper.
 type EventBridge = { mutable invoke: obj -> unit }
 
+/// Set by element updates that change content the draw cycle won't repaint on its own
+/// (notably a read-only TextView's text). The host loop forces a full redraw when set.
+[<RequireQualifiedAccess>]
+module Repaint =
+    let mutable needed = false
+    let request () = needed <- true
+
 [<RequireQualifiedAccess>]
 module internal EventStore =
 

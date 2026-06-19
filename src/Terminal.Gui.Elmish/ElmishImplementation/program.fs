@@ -162,6 +162,7 @@ module Program =
 
                             let nextTreeState = program.view state syncDispatch
                             let disposalsBefore = Differ.disposals
+                            Repaint.needed <- false
                             Differ.update currentState nextTreeState
                             currentTreeState <- Some nextTreeState
 
@@ -184,6 +185,11 @@ module Program =
                                     | Some v when not (isNull v.SuperView) && not v.HasFocus -> v.SetFocus() |> ignore
                                     | _ -> ()
                                 with _ -> ()
+                            elif Repaint.needed then
+                                // Content changed that the draw cycle won't repaint on its own
+                                // (e.g. a read-only TextView). Force a full repaint — but no
+                                // screen-clear escape, which would desync the driver.
+                                app.LayoutAndDraw true
                             else
                                 app.LayoutAndDraw false)
                 )
