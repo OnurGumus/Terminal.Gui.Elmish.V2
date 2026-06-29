@@ -124,20 +124,17 @@ the package is **self-contained**: `Terminal.Gui.dll` is bundled into `lib/`, an
 own runtime dependencies (Markdig, TextMateSharp, etc.) are declared as normal package
 dependencies. Consumers just `dotnet add package OnurGumus.Terminal.Gui.Elmish` — no extra feed.
 
-`.github/workflows/publish.yml` builds Terminal.Gui from the submodule, packs the wrapper as
+`.github/workflows/ci.yaml` builds Terminal.Gui from the submodule, packs the wrapper as
 `2.0.0-ci.<run-number>`, and publishes to NuGet.org on every push to `master` via
-**Trusted Publishing (OIDC)** — no API key stored.
+**Trusted Publishing (OIDC)** — no API key stored. It also uploads the `.nupkg` as a build
+artifact on every run.
 
-To enable publishing (one-time, on NuGet.org):
+Publishing is wired up via a one-time Trusted Publishing policy on NuGet.org:
 
-1. Sign in to NuGet.org → your account → **Trusted Publishing** → add a policy:
-   - Repository owner: `OnurGumus`, repository: `Terminal.Gui.Elmish.V2`
-   - Workflow file: `publish.yml`
-   - Package: `OnurGumus.Terminal.Gui.Elmish` (a new-package/glob policy works for the first push)
-2. In the GitHub repo → Settings → Secrets and variables → Actions → **Variables**, add
-   `NUGET_USER` = your NuGet.org username.
-
-Until then the workflow still builds, packs, and uploads the `.nupkg` as a build artifact.
+- Package owner: `ReverseBlade` (the `NuGet/login` step logs in as this user)
+- Repository owner: `OnurGumus`, repository: `Terminal.Gui.Elmish.V2`
+- Workflow file: `ci.yaml`
+- Package: `OnurGumus.Terminal.Gui.Elmish` (a new-package/glob policy works for the first push)
 
 ## Credits
 

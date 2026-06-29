@@ -24,6 +24,14 @@
     <RepositoryType>git</RepositoryType>
   </PropertyGroup>
 
+  <!-- Pin a low FSharp.Core floor instead of letting the build SDK's implicit version
+       (e.g. 10.1.x) become the published dependency. A low floor lets consumers satisfy it
+       with whatever FSharp.Core their own SDK already provides, avoiding NU1605 downgrade
+       errors. Uses Update to retarget the implicit reference rather than adding a duplicate. -->
+  <ItemGroup>
+    <PackageReference Update="FSharp.Core" Version="8.0.100" />
+  </ItemGroup>
+
   <ItemGroup>
     <Compile Include="Types.fs" />
     <Compile Include="Interop.fs" />
