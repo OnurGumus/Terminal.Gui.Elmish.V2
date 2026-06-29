@@ -13,10 +13,17 @@ was rewritten against the v2 API; the consumer-facing DSL (`View.label [...]`, `
 The `examples/Demo` app drives the whole DSL from a single Elmish program — menus, tabs,
 forms, tables, live timers and more, all in the terminal.
 
-| Counter | Form | Data |
-|---|---|---|
-| ![Counter tab: live counter with progress bar, buttons and a history sparkline](docs/images/showcase-counter.png) | ![Form tab: text input, checkbox, radio group and combo box](docs/images/showcase-form.png) | ![Data tab: TableView bound to a System.Data.DataTable](docs/images/showcase-data.png) |
-| Reactive counter with progress bar, spinner timer and a sparkline of history. | Two-way bound form: text field, checkbox, radio group and combo box. | `TableView` bound to a `System.Data.DataTable` with keyboard navigation. |
+**Counter** — reactive counter with progress bar, spinner timer and a sparkline of history.
+
+![Counter tab: live counter with progress bar, buttons and a history sparkline](docs/images/showcase-counter.png)
+
+**Form** — two-way bound form: text field, checkbox, radio group and combo box.
+
+![Form tab: text input, checkbox, radio group and combo box](docs/images/showcase-form.png)
+
+**Data** — `TableView` bound to a `System.Data.DataTable` with keyboard navigation.
+
+![Data tab: TableView bound to a System.Data.DataTable](docs/images/showcase-data.png)
 
 ## Quick start
 
