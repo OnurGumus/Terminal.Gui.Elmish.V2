@@ -372,6 +372,7 @@ let dataPage model dispatch =
           prop.width.fill 2
           prop.height.fill 2
           tableView.table dataTable
+          tableView.style.bottomLine true   // close the box along the bottom
       ] ]
 
 /// A live horizontal bar chart of the counter history (animates while auto-spinning).

@@ -841,6 +841,21 @@ type TableViewElement(props: IProperty list) =
     let setProps (element: TableView) props =
         props |> Interop.getValue<DataTable> "table" |> Option.iter (fun v -> element.Table <- DataTableSource v)
 
+        // TableStyle flags. Style's getter hands back a mutable object, so mutating a flag alone
+        // wouldn't repaint; collect whether any flag was set and call Update() once at the end.
+        let mutable styleChanged = false
+        let setStyle key (apply: TableStyle -> bool -> unit) =
+            props |> Interop.getValue<bool> key |> Option.iter (fun v -> apply element.Style v; styleChanged <- true)
+        setStyle "style.bottomLine"          (fun s v -> s.ShowHorizontalBottomLine <- v)
+        setStyle "style.headerOverline"      (fun s v -> s.ShowHorizontalHeaderOverline <- v)
+        setStyle "style.headerUnderline"     (fun s v -> s.ShowHorizontalHeaderUnderline <- v)
+        setStyle "style.headers"             (fun s v -> s.ShowHeaders <- v)
+        setStyle "style.verticalCellLines"   (fun s v -> s.ShowVerticalCellLines <- v)
+        setStyle "style.verticalHeaderLines" (fun s v -> s.ShowVerticalHeaderLines <- v)
+        setStyle "style.firstColumnLine"     (fun s v -> s.ShowVerticalCellLineForFirstColumn <- v)
+        setStyle "style.lastColumnLine"      (fun s v -> s.ShowVerticalCellLineForLastColumn <- v)
+        if styleChanged then element.Update()
+
         props
         |> Interop.getValue<TableSelection -> unit> "onSelectedCellChanged"
         |> Option.iter (fun f ->

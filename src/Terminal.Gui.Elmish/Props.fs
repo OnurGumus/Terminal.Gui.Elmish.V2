@@ -216,6 +216,28 @@ type tableView =
     static member inline table(value: System.Data.DataTable) = Interop.mkprop "table" value
     static member inline onSelectedCellChanged(f: TableSelection -> unit) = Interop.mkprop "onSelectedCellChanged" f
 
+module tableView =
+    /// Grid-line / header options mapped onto Terminal.Gui's `TableStyle`. Each takes a bool so
+    /// callers can both enable a default-off line (e.g. `style.bottomLine true`) and disable a
+    /// default-on one (e.g. `style.verticalCellLines false`).
+    type style =
+        /// Closing line along the bottom of the table (default off). Set true for a fully boxed table.
+        static member inline bottomLine(value: bool) = Interop.mkprop "style.bottomLine" value
+        /// Line above the header row (default on).
+        static member inline headerOverline(value: bool) = Interop.mkprop "style.headerOverline" value
+        /// Line below the header row (default on).
+        static member inline headerUnderline(value: bool) = Interop.mkprop "style.headerUnderline" value
+        /// Whether the header row is shown at all (default on).
+        static member inline headers(value: bool) = Interop.mkprop "style.headers" value
+        /// Vertical separators between cells (default on).
+        static member inline verticalCellLines(value: bool) = Interop.mkprop "style.verticalCellLines" value
+        /// Vertical separators between header cells (default on).
+        static member inline verticalHeaderLines(value: bool) = Interop.mkprop "style.verticalHeaderLines" value
+        /// Left edge line on the first column (default on).
+        static member inline firstColumnLine(value: bool) = Interop.mkprop "style.firstColumnLine" value
+        /// Right edge line on the last column (default on).
+        static member inline lastColumnLine(value: bool) = Interop.mkprop "style.lastColumnLine" value
+
 
 type treeView =
     static member inline nodes(value: ITreeNode list) = Interop.mkprop "nodes" value
