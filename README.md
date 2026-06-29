@@ -8,6 +8,16 @@ by **Daniel Hardt** — the original v1 wrapper — updated to Terminal.Gui v2. 
 was rewritten against the v2 API; the consumer-facing DSL (`View.label [...]`, `prop.*`,
 `Program.run`) is preserved where possible and modernized where v2 forced a change.
 
+## Showcase
+
+The `examples/Demo` app drives the whole DSL from a single Elmish program — menus, tabs,
+forms, tables, live timers and more, all in the terminal.
+
+| Counter | Form | Data |
+|---|---|---|
+| ![Counter tab: live counter with progress bar, buttons and a history sparkline](docs/images/showcase-counter.png) | ![Form tab: text input, checkbox, radio group and combo box](docs/images/showcase-form.png) | ![Data tab: TableView bound to a System.Data.DataTable](docs/images/showcase-data.png) |
+| Reactive counter with progress bar, spinner timer and a sparkline of history. | Two-way bound form: text field, checkbox, radio group and combo box. | `TableView` bound to a `System.Data.DataTable` with keyboard navigation. |
+
 ## Quick start
 
 This repo references Terminal.Gui v2 as a **git submodule** (the namespace-refactored
