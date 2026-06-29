@@ -286,6 +286,8 @@ type CheckBoxElement(props: IProperty list) =
         |> Option.iter (fun v -> if Checker.textChanged element v then element.Text <- v)
 
         props |> Interop.getValue<bool> "checked" |> Option.iter (fun v -> element.Value <- toState v)
+        props |> Interop.getValue<bool> "radioStyle" |> Option.iter (fun v -> element.RadioStyle <- v)
+        props |> Interop.getValue<bool> "allowCheckStateNone" |> Option.iter (fun v -> element.AllowCheckStateNone <- v)
 
         props
         |> Interop.getValue<{| previous: bool; current: bool |} -> unit> "toggled"
@@ -411,6 +413,7 @@ type TextViewElement(props: IProperty list) =
         props |> Interop.getValue<bool> "readOnly" |> Option.iter (fun v -> element.ReadOnly <- v)
         props |> Interop.getValue<bool> "wordWrap" |> Option.iter (fun v -> element.WordWrap <- v)
         props |> Interop.getValue<bool> "multiline" |> Option.iter (fun v -> element.Multiline <- v)
+        props |> Interop.getValue<int> "tabWidth" |> Option.iter (fun v -> element.TabWidth <- v)
 
         let scrollToEnd = props |> Interop.getValue<bool> "scrollToEnd" |> Option.defaultValue false
 
@@ -508,6 +511,8 @@ type LineElement(props: IProperty list) =
 
     let setProps (element: Line) props =
         props |> Interop.getValue<Orientation> "orientation" |> Option.iter (fun v -> element.Orientation <- v)
+        props |> Interop.getValue<LineStyle> "lineStyle" |> Option.iter (fun v -> element.Style <- v)
+        props |> Interop.getValue<Attribute> "lineAttribute" |> Option.iter (fun v -> element.LineAttribute <- System.Nullable v)
 
     override _.name = "Line"
 
@@ -542,6 +547,8 @@ type ListViewElement(props: IProperty list) =
         |> Option.iter (fun items -> element.SetSource<string>(ObservableCollection<string>(items)))
 
         props |> Interop.getValue<int> "selectedItem" |> Option.iter (fun v -> element.SelectedItem <- Nullable v)
+        props |> Interop.getValue<bool> "showMarks" |> Option.iter (fun v -> element.ShowMarks <- v)
+        props |> Interop.getValue<bool> "markMultiple" |> Option.iter (fun v -> element.MarkMultiple <- v)
 
         props
         |> Interop.getValue<int -> unit> "onSelectedItemChanged"
@@ -590,6 +597,8 @@ type OptionSelectorElement(props: IProperty list) =
         |> Option.iter (fun items -> element.Labels <- (items |> List.toArray :> IReadOnlyList<string>))
 
         props |> Interop.getValue<int> "selectedItem" |> Option.iter (fun v -> element.Value <- Nullable v)
+        props |> Interop.getValue<Orientation> "orientation" |> Option.iter (fun v -> element.Orientation <- v)
+        props |> Interop.getValue<int> "horizontalSpace" |> Option.iter (fun v -> element.HorizontalSpace <- v)
 
         props
         |> Interop.getValue<int -> unit> "onSelectedItemChanged"
@@ -683,6 +692,7 @@ type DatePickerElement(props: IProperty list) =
 
     let setProps (element: DatePicker) props =
         props |> Interop.getValue<DateTime> "date" |> Option.iter (fun v -> element.Value <- v)
+        props |> Interop.getValue<System.Globalization.CultureInfo> "culture" |> Option.iter (fun v -> element.Culture <- v)
 
         props
         |> Interop.getValue<DateTime -> unit> "onDateChanged"
@@ -724,6 +734,15 @@ type ColorPickerElement(props: IProperty list) =
 
     let setProps (element: ColorPicker) props =
         props |> Interop.getValue<Color> "selectedColor" |> Option.iter (fun v -> element.SelectedColor <- v)
+
+        // ColorPickerStyle flags; reapply via the Style setter so the picker rebuilds its inputs.
+        let mutable styleChanged = false
+        let setStyle key (apply: ColorPickerStyle -> bool -> unit) =
+            props |> Interop.getValue<bool> key |> Option.iter (fun v -> apply element.Style v; styleChanged <- true)
+        setStyle "style.showTextFields" (fun s v -> s.ShowTextFields <- v)
+        setStyle "style.showColorName"  (fun s v -> s.ShowColorName <- v)
+        props |> Interop.getValue<ColorModel> "style.colorModel" |> Option.iter (fun v -> element.Style.ColorModel <- v; styleChanged <- true)
+        if styleChanged then element.ApplyStyleChanges()
 
         props
         |> Interop.getValue<Color -> unit> "onColorChanged"
@@ -798,6 +817,11 @@ type TabsElement(props: IProperty list) =
     inherit TerminalElement(props)
 
     let setProps (element: Tabs) props =
+        props |> Interop.getValue<Side> "tabSide" |> Option.iter (fun v -> element.TabSide <- v)
+        props |> Interop.getValue<LineStyle> "tabLineStyle" |> Option.iter (fun v -> element.TabLineStyle <- v)
+        props |> Interop.getValue<int> "tabDepth" |> Option.iter (fun v -> element.TabDepth <- v)
+        props |> Interop.getValue<int> "tabSpacing" |> Option.iter (fun v -> element.TabSpacing <- v)
+
         props
         |> Interop.getValue<View -> unit> "onSelectedTabChanged"
         |> Option.iter (fun f ->
@@ -904,6 +928,20 @@ type TreeViewElement(props: IProperty list) =
             element.AddObjects(nodes))
 
         props |> Interop.getValue<ITreeNode> "selectedObject" |> Option.iter (fun v -> element.SelectedObject <- v)
+        props |> Interop.getValue<bool> "multiSelect" |> Option.iter (fun v -> element.MultiSelect <- v)
+        props |> Interop.getValue<bool> "allowLetterBasedNavigation" |> Option.iter (fun v -> element.AllowLetterBasedNavigation <- v)
+
+        // TreeStyle flags are read each draw, so mutate in place and request a redraw.
+        let mutable styleChanged = false
+        let setStyle key (apply: TreeStyle -> bool -> unit) =
+            props |> Interop.getValue<bool> key |> Option.iter (fun v -> apply element.Style v; styleChanged <- true)
+        setStyle "style.showBranchLines"          (fun s v -> s.ShowBranchLines <- v)
+        setStyle "style.colorExpandSymbol"        (fun s v -> s.ColorExpandSymbol <- v)
+        setStyle "style.invertExpandSymbolColors" (fun s v -> s.InvertExpandSymbolColors <- v)
+        setStyle "style.highlightModelTextOnly"   (fun s v -> s.HighlightModelTextOnly <- v)
+        props |> Interop.getValue<System.Text.Rune> "style.expandableSymbol"  |> Option.iter (fun v -> element.Style.ExpandableSymbol <- System.Nullable v; styleChanged <- true)
+        props |> Interop.getValue<System.Text.Rune> "style.collapseableSymbol" |> Option.iter (fun v -> element.Style.CollapseableSymbol <- System.Nullable v; styleChanged <- true)
+        if styleChanged then element.SetNeedsDraw()
 
         props
         |> Interop.getValue<ITreeNode -> unit> "onSelectionChanged"
@@ -959,6 +997,8 @@ type HexViewElement(props: IProperty list) =
     let setProps (element: HexView) props =
         props |> Interop.getValue<System.IO.Stream> "source" |> Option.iter (fun v -> element.Source <- v)
         props |> Interop.getValue<bool> "allowEdits" |> Option.iter (fun v -> element.ReadOnly <- not v)
+        props |> Interop.getValue<int> "bytesPerLine" |> Option.iter (fun v -> element.BytesPerLine <- v)
+        props |> Interop.getValue<int> "addressWidth" |> Option.iter (fun v -> element.AddressWidth <- v)
 
         props
         |> Interop.getValue<HexViewEditEventArgs -> unit> "onEdited"

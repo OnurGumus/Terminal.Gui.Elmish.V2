@@ -129,6 +129,10 @@ type checkBox =
     static member inline text(text: string) = Interop.mkprop "text" text
     static member inline isChecked(v: bool) = Interop.mkprop "checked" v
     static member inline onToggled(f: {| previous: bool; current: bool |} -> unit) = Interop.mkprop "toggled" f
+    /// Render radio-button glyphs (●/○) instead of checkbox glyphs (☑/☐).
+    static member inline radioStyle(value: bool) = Interop.mkprop "radioStyle" value
+    /// Allow a third "none" state (checked / unchecked / none) on toggle.
+    static member inline allowCheckStateNone(value: bool) = Interop.mkprop "allowCheckStateNone" value
 
 
 type textField =
@@ -146,6 +150,8 @@ type textView =
     /// For read-only views: scroll to the bottom whenever the text changes (e.g. a chat log).
     static member inline scrollToEnd = Interop.mkprop "scrollToEnd" true
     static member inline onTextChanged(value: string -> unit) = Interop.mkprop "onTextChanged" value
+    /// Number of columns a tab character occupies.
+    static member inline tabWidth(value: int) = Interop.mkprop "tabWidth" value
 
 
 type progressBar =
@@ -167,12 +173,20 @@ module progressBar =
 type lineView =
     static member inline horizontal = Interop.mkprop "orientation" Orientation.Horizontal
     static member inline vertical = Interop.mkprop "orientation" Orientation.Vertical
+    /// The line's own glyph style (Single, Double, Heavy, Rounded, Dashed, Dotted, ...).
+    static member inline lineStyle(value: LineStyle) = Interop.mkprop "lineStyle" value
+    /// Override the scheme-derived color/style used to draw the line.
+    static member inline attribute(value: Attribute) = Interop.mkprop "lineAttribute" value
 
 
 type listView =
     static member inline source(items: string list) = Interop.mkprop "source" items
     static member inline selectedItem(index: int) = Interop.mkprop "selectedItem" index
     static member inline onSelectedItemChanged(f: int -> unit) = Interop.mkprop "onSelectedItemChanged" f
+    /// Show mark glyphs ([x] / [ ]) in front of each item.
+    static member inline showMarks(value: bool) = Interop.mkprop "showMarks" value
+    /// Allow more than one item to be marked at once.
+    static member inline markMultiple(value: bool) = Interop.mkprop "markMultiple" value
 
 
 /// v1 radioGroup -> v2 OptionSelector.
@@ -180,6 +194,14 @@ type radioGroup =
     static member inline radioLabels(labels: string list) = Interop.mkprop "radioLabels" labels
     static member inline selectedItem(index: int) = Interop.mkprop "selectedItem" index
     static member inline onSelectedItemChanged(f: int -> unit) = Interop.mkprop "onSelectedItemChanged" f
+    /// Horizontal gap between options when laid out horizontally.
+    static member inline horizontalSpace(value: int) = Interop.mkprop "horizontalSpace" value
+
+module radioGroup =
+    /// Layout direction of the options.
+    type orientation =
+        static member inline vertical = Interop.mkprop "orientation" Orientation.Vertical
+        static member inline horizontal = Interop.mkprop "orientation" Orientation.Horizontal
 
 
 /// v1 comboBox -> v2 DropDownList.
@@ -194,11 +216,26 @@ type comboBox =
 type dateField =
     static member inline date(value: System.DateTime) = Interop.mkprop "date" value
     static member inline onDateChanged(f: System.DateTime -> unit) = Interop.mkprop "onDateChanged" f
+    /// Culture used to format the date and lay out the calendar.
+    static member inline culture(value: System.Globalization.CultureInfo) = Interop.mkprop "culture" value
 
 
 type colorPicker =
     static member inline selectedColor(value: Color) = Interop.mkprop "selectedColor" value
     static member inline onColorChanged(f: Color -> unit) = Interop.mkprop "onColorChanged" f
+
+module colorPicker =
+    type style =
+        /// Show the numeric channel input fields (default on).
+        static member inline showTextFields(value: bool) = Interop.mkprop "style.showTextFields" value
+        /// Show the color-name selector (default off).
+        static member inline showColorName(value: bool) = Interop.mkprop "style.showColorName" value
+
+    /// Color model the picker edits in.
+    type colorModel =
+        static member inline rgb = Interop.mkprop "style.colorModel" ColorModel.RGB
+        static member inline hsv = Interop.mkprop "style.colorModel" ColorModel.HSV
+        static member inline hsl = Interop.mkprop "style.colorModel" ColorModel.HSL
 
 
 type textValidateField =
@@ -210,6 +247,20 @@ type textValidateField =
 type tabView =
     static member inline children(children: TerminalElement list) = Interop.mkprop "children" children
     static member inline onSelectedTabChanged(f: View -> unit) = Interop.mkprop "onSelectedTabChanged" f
+    /// Border style drawn around the tab headers.
+    static member inline tabLineStyle(value: LineStyle) = Interop.mkprop "tabLineStyle" value
+    /// Thickness of the tab header strip (rows when top/bottom, columns when left/right).
+    static member inline tabDepth(value: int) = Interop.mkprop "tabDepth" value
+    /// Gap between tabs; negative values overlap them.
+    static member inline tabSpacing(value: int) = Interop.mkprop "tabSpacing" value
+
+module tabView =
+    /// Which side of the view the tab headers sit on.
+    type side =
+        static member inline top = Interop.mkprop "tabSide" Side.Top
+        static member inline bottom = Interop.mkprop "tabSide" Side.Bottom
+        static member inline left = Interop.mkprop "tabSide" Side.Left
+        static member inline right = Interop.mkprop "tabSide" Side.Right
 
 
 type tableView =
@@ -244,6 +295,25 @@ type treeView =
     static member inline selectedObject(value: ITreeNode) = Interop.mkprop "selectedObject" value
     static member inline onSelectionChanged(f: ITreeNode -> unit) = Interop.mkprop "onSelectionChanged" f
     static member inline onObjectActivated(f: ITreeNode -> unit) = Interop.mkprop "onObjectActivated" f
+    /// Allow selecting more than one node (default on).
+    static member inline multiSelect(value: bool) = Interop.mkprop "multiSelect" value
+    /// Allow jumping to nodes by typing their leading letters (default on).
+    static member inline allowLetterBasedNavigation(value: bool) = Interop.mkprop "allowLetterBasedNavigation" value
+
+module treeView =
+    type style =
+        /// Draw the vertical connector lines between branches (default on).
+        static member inline showBranchLines(value: bool) = Interop.mkprop "style.showBranchLines" value
+        /// Colorize the expand/collapse glyphs.
+        static member inline colorExpandSymbol(value: bool) = Interop.mkprop "style.colorExpandSymbol" value
+        /// Invert the expand/collapse glyph colors.
+        static member inline invertExpandSymbolColors(value: bool) = Interop.mkprop "style.invertExpandSymbolColors" value
+        /// Highlight only the node text rather than the whole row.
+        static member inline highlightModelTextOnly(value: bool) = Interop.mkprop "style.highlightModelTextOnly" value
+        /// Glyph shown for an expandable (collapsed) node, e.g. a Rune for '▶'.
+        static member inline expandableSymbol(value: System.Text.Rune) = Interop.mkprop "style.expandableSymbol" value
+        /// Glyph shown for a collapsible (expanded) node, e.g. a Rune for '▼'.
+        static member inline collapseableSymbol(value: System.Text.Rune) = Interop.mkprop "style.collapseableSymbol" value
 
 
 type hexView =
@@ -251,6 +321,10 @@ type hexView =
     static member inline allowEdits(value: bool) = Interop.mkprop "allowEdits" value
     static member inline onEdited(f: HexViewEditEventArgs -> unit) = Interop.mkprop "onEdited" f
     static member inline onPositionChanged(f: HexViewEventArgs -> unit) = Interop.mkprop "onPositionChanged" f
+    /// Number of bytes shown per row.
+    static member inline bytesPerLine(value: int) = Interop.mkprop "bytesPerLine" value
+    /// Width (in characters) of the address column.
+    static member inline addressWidth(value: int) = Interop.mkprop "addressWidth" value
 
 
 /// Builders for v2 menu structures used by `View.menuBar`.
